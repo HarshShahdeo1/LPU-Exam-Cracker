@@ -1,6 +1,6 @@
 import { ResultsShell } from "@/components/results/results-shell";
-import { requireUser } from "@/lib/auth";
-import { getLatestUserReport, getUserReport } from "@/lib/reports";
+import { canAccessSystemHealth, requireUser } from "@/lib/auth";
+import { getLatestUserReport, getUserReport, getUserReports } from "@/lib/reports";
 
 export default async function ResultsPage({
   searchParams
@@ -11,9 +11,17 @@ export default async function ResultsPage({
   const params = await searchParams;
   const reportIdParam = params?.reportId;
   const reportId = Array.isArray(reportIdParam) ? reportIdParam[0] : reportIdParam;
+  const libraryReports = await getUserReports(user.uid);
   const report = reportId
     ? await getUserReport(user.uid, reportId)
-    : await getLatestUserReport(user.uid);
+    : libraryReports[0] ?? (await getLatestUserReport(user.uid));
 
-  return <ResultsShell record={report} userEmail={user.email} />;
+  return (
+    <ResultsShell
+      record={report}
+      libraryReports={libraryReports}
+      userEmail={user.email}
+      showSystemHealthLink={canAccessSystemHealth(user.email)}
+    />
+  );
 }

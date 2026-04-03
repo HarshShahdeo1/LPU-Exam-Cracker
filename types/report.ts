@@ -27,6 +27,6 @@ export type StoredUserReport = {
   createdAt: string | null;
   sourceExcerpt: string;
   sourceLength: number;
+  hasSourceText: boolean;
   report: StudyReport;
 };
-

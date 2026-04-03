@@ -4,16 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { SyllabusChat } from "@/components/results/syllabus-chat";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { formatReportDate } from "@/lib/utils";
 import { StoredUserReport } from "@/types/report";
 
 type ResultsShellProps = {
   record: StoredUserReport | null;
+  libraryReports: StoredUserReport[];
   userEmail: string | null;
+  showSystemHealthLink: boolean;
 };
 
-export function ResultsShell({ record, userEmail }: ResultsShellProps) {
+export function ResultsShell({
+  record,
+  libraryReports,
+  userEmail,
+  showSystemHealthLink
+}: ResultsShellProps) {
   const [activeUnit, setActiveUnit] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
 
@@ -34,12 +42,22 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
             high-weightage topics, and MCQ practice cards.
           </p>
           <div className="mt-6">
-            <Link
-              href="/upload"
-              className="inline-flex rounded-2xl bg-gradient-to-r from-[#A50000] to-[#E14C3C] px-5 py-3 text-sm font-semibold text-white"
-            >
-              Go to upload dashboard
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                href="/upload"
+                className="inline-flex rounded-2xl bg-gradient-to-r from-[#A50000] to-[#E14C3C] px-5 py-3 text-sm font-semibold text-white"
+              >
+                Go to upload dashboard
+              </Link>
+              {showSystemHealthLink && (
+                <Link
+                  href="/system-health"
+                  className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
+                >
+                  Open system health
+                </Link>
+              )}
+            </div>
           </div>
         </GlassPanel>
       </main>
@@ -88,7 +106,15 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                 </GlassPanel>
               ))}
             </div>
-            <div className="flex items-end">
+            <div className="flex flex-wrap items-end gap-3">
+              {showSystemHealthLink && (
+                <Link
+                  href="/system-health"
+                  className="inline-flex items-center justify-center rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-5 py-3 text-sm font-semibold text-[#ffe5de] transition duration-200 hover:-translate-y-0.5 hover:bg-[#ef4335]/16"
+                >
+                  System health
+                </Link>
+              )}
               <Link
                 href="/upload"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10"
@@ -99,7 +125,56 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
           </div>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">
+        <section className="grid gap-6 xl:grid-cols-[0.48fr,0.82fr,1.05fr]">
+          <GlassPanel className="p-6">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-white/45">The Library</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Your saved syllabuses</h2>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70">
+                {libraryReports.length} saved
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {libraryReports.length ? (
+                libraryReports.map((libraryReport) => {
+                  const isActive = record.id === libraryReport.id;
+
+                  return (
+                    <Link
+                      key={libraryReport.id}
+                      href={`/results?reportId=${libraryReport.id}`}
+                      className={`block rounded-[24px] border px-4 py-4 transition ${
+                        isActive
+                          ? "border-[#E14C3C]/40 bg-[linear-gradient(145deg,rgba(239,67,53,0.16),rgba(10,12,18,0.56))] shadow-[0_20px_60px_rgba(165,0,0,0.14)]"
+                          : "border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:bg-white/[0.05]"
+                      }`}
+                    >
+                      <p className="text-xs uppercase tracking-[0.22em] text-white/40">
+                        {libraryReport.fileName}
+                      </p>
+                      <p className="mt-2 text-base font-semibold text-white">
+                        {libraryReport.report.courseTitle}
+                      </p>
+                      <p className="mt-2 text-sm text-white/55">
+                        {formatReportDate(libraryReport.createdAt)}
+                      </p>
+                      <p className="mt-3 text-xs text-white/40">
+                        {libraryReport.report.units.length} units
+                      </p>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="rounded-[24px] border border-white/10 bg-black/20 px-4 py-4 text-sm text-white/60">
+                  Your saved reports will appear here after you analyze multiple syllabuses.
+                </div>
+              )}
+            </div>
+          </GlassPanel>
+
           <GlassPanel className="p-6">
             <div className="flex flex-wrap gap-3">
               {record.report.units.map((unit, index) => (
@@ -251,6 +326,14 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
             </div>
           </GlassPanel>
         </section>
+
+        <SyllabusChat
+          reportId={record.id}
+          courseTitle={record.report.courseTitle}
+          activeUnitNumber={record.report.units[activeUnit].unitNumber}
+          activeUnitTitle={record.report.units[activeUnit].unitTitle}
+          hasSourceText={record.hasSourceText}
+        />
       </div>
     </main>
   );

@@ -19,6 +19,9 @@ Production-ready Next.js 15 application that accepts LPU syllabus PDFs, extracts
 - PDF upload dashboard with animated progress feedback
 - `/api/analyze` pipeline that parses the PDF, calls OpenAI, normalizes the JSON response, and stores it in Firestore `userReports`
 - Results screen with study cards and per-unit practice quiz sections
+- Multi-syllabus library sidebar so users can reopen any saved report from Firestore
+- "Ask Your Syllabus" chat bubble on the results page for follow-up questions grounded in the parsed PDF
+- Hidden `/system-health` dashboard with Grafana-style latency and reliability metrics backed by Firestore telemetry
 
 ## Environment Variables
 
@@ -33,6 +36,7 @@ Required values:
 - `OPENAI_API_KEY`
 - `OPENAI_BASE_URL` optional, defaults to OpenAI and can point to Groq's OpenAI-compatible endpoint
 - `OPENAI_MODEL` optional, defaults to `gpt-4o-mini`
+- `ADMIN_EMAILS` optional, comma-separated allowlist for `/system-health`
 - `FIREBASE_SERVICE_ACCOUNT_KEY`
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -104,3 +108,5 @@ docker push <account-id>.dkr.ecr.<aws-region>.amazonaws.com/lpu-exam-cracker-v2:
 - The middleware checks for a Firebase-backed session cookie. Server pages and API routes verify the cookie before reading or writing user data.
 - The OpenAI prompt truncates very large PDFs to keep token usage predictable.
 - `userReports` documents are stored with `uid`, `fileName`, `createdAt`, `sourceExcerpt`, `sourceLength`, and `report`.
+- Newly created `userReports` documents also retain the parsed `sourceText` so the results page can power "Ask Your Syllabus" follow-up chat.
+- `analysisEvents` documents track status, latency, and failure-stage telemetry for the hidden `/system-health` page.

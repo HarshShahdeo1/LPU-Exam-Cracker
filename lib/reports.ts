@@ -7,6 +7,7 @@ type SaveUserReportInput = {
   uid: string;
   fileName: string;
   sourceExcerpt: string;
+  sourceText: string;
   sourceLength: number;
   report: StudyReport;
 };
@@ -202,6 +203,59 @@ function serializeTimestamp(value: unknown) {
   return null;
 }
 
+function getTimestampMillis(value: unknown) {
+  if (value instanceof Timestamp) {
+    return value.toMillis();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof value.toDate === "function"
+  ) {
+    return value.toDate().getTime();
+  }
+
+  return 0;
+}
+
+function isFirestoreMissingIndexError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? error.code : undefined;
+  const message = "message" in error && typeof error.message === "string" ? error.message : "";
+
+  return code === 9 || message.includes("FAILED_PRECONDITION");
+}
+
+async function getSortedUserReportDocs(uid: string) {
+  try {
+    const snapshot = await getAdminDb()
+      .collection("userReports")
+      .where("uid", "==", uid)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    return snapshot.docs;
+  } catch (error) {
+    if (!isFirestoreMissingIndexError(error)) {
+      throw error;
+    }
+
+    const fallbackSnapshot = await getAdminDb()
+      .collection("userReports")
+      .where("uid", "==", uid)
+      .get();
+
+    return fallbackSnapshot.docs.sort((left, right) => {
+      return getTimestampMillis(right.data().createdAt) - getTimestampMillis(left.data().createdAt);
+    });
+  }
+}
+
 export async function saveUserReport(input: SaveUserReportInput) {
   const reportRef = getAdminDb().collection("userReports").doc();
 
@@ -209,6 +263,7 @@ export async function saveUserReport(input: SaveUserReportInput) {
     uid: input.uid,
     fileName: input.fileName,
     sourceExcerpt: input.sourceExcerpt,
+    sourceText: input.sourceText,
     sourceLength: input.sourceLength,
     report: input.report,
     createdAt: FieldValue.serverTimestamp()
@@ -224,8 +279,33 @@ function mapStoredUserReport(id: string, value: FirebaseFirestore.DocumentData):
     fileName: value.fileName,
     sourceExcerpt: value.sourceExcerpt ?? "",
     sourceLength: value.sourceLength ?? 0,
+    hasSourceText: typeof value.sourceText === "string" && value.sourceText.trim().length > 0,
     createdAt: serializeTimestamp(value.createdAt),
     report: normalizeStudyReport(value.report, value.fileName ?? "LPU report")
+  };
+}
+
+export async function getUserReportChatContext(uid: string, reportId: string) {
+  const snapshot = await getAdminDb().collection("userReports").doc(reportId).get();
+
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const data = snapshot.data();
+
+  if (!data || data.uid !== uid) {
+    return null;
+  }
+
+  const sourceText =
+    typeof data.sourceText === "string" && data.sourceText.trim() ? data.sourceText.trim() : null;
+
+  return {
+    reportId: snapshot.id,
+    fileName: data.fileName ?? "LPU report",
+    sourceText,
+    report: normalizeStudyReport(data.report, data.fileName ?? "LPU report")
   };
 }
 
@@ -246,17 +326,18 @@ export async function getUserReport(uid: string, reportId: string) {
 }
 
 export async function getLatestUserReport(uid: string) {
-  const snapshot = await getAdminDb()
-    .collection("userReports")
-    .where("uid", "==", uid)
-    .orderBy("createdAt", "desc")
-    .limit(1)
-    .get();
+  const docs = await getSortedUserReportDocs(uid);
 
-  if (snapshot.empty) {
+  if (!docs.length) {
     return null;
   }
 
-  const doc = snapshot.docs[0];
-  return mapStoredUserReport(doc.id, doc.data());
+  const latestDoc = docs[0];
+  return mapStoredUserReport(latestDoc.id, latestDoc.data());
+}
+
+export async function getUserReports(uid: string) {
+  const docs = await getSortedUserReportDocs(uid);
+
+  return docs.map((doc) => mapStoredUserReport(doc.id, doc.data()));
 }

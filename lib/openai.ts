@@ -18,3 +18,17 @@ export function getOpenAIClient() {
 export function getOpenAIModel() {
   return process.env.OPENAI_MODEL || "gpt-4o-mini";
 }
+
+export function getAIProviderName() {
+  const baseURL = process.env.OPENAI_BASE_URL?.toLowerCase() ?? "";
+
+  if (!baseURL) {
+    return "OpenAI";
+  }
+
+  if (baseURL.includes("groq")) {
+    return "Groq";
+  }
+
+  return "OpenAI-compatible";
+}

@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { NextRequest } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
+import { getOptionalEnvList } from "@/lib/env";
 import { getAdminAuth } from "@/lib/firebase-admin";
 
 export type SessionUser = {
@@ -37,6 +38,26 @@ export async function requireUser() {
 
   if (!user) {
     redirect("/");
+  }
+
+  return user;
+}
+
+export function canAccessSystemHealth(email: string | null) {
+  const adminEmails = getOptionalEnvList("ADMIN_EMAILS").map((entry) => entry.toLowerCase());
+
+  if (!adminEmails.length) {
+    return true;
+  }
+
+  return !!email && adminEmails.includes(email.toLowerCase());
+}
+
+export async function requireSystemHealthAccess() {
+  const user = await requireUser();
+
+  if (!canAccessSystemHealth(user.email)) {
+    notFound();
   }
 
   return user;

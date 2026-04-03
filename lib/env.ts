@@ -8,6 +8,19 @@ export function getRequiredEnv(name: string) {
   return value;
 }
 
+export function getOptionalEnvList(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 export function getFirebaseServiceAccount() {
   try {
     return JSON.parse(getRequiredEnv("FIREBASE_SERVICE_ACCOUNT_KEY"));

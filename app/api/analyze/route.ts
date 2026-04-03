@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import pdf from "pdf-parse";
 
-import { requireRequestUser } from "@/lib/auth";
-import { getOpenAIClient, getOpenAIModel } from "@/lib/openai";
+import { SessionUser, requireRequestUser } from "@/lib/auth";
+import { getAIProviderName, getOpenAIClient, getOpenAIModel } from "@/lib/openai";
 import { normalizeStudyReport, saveUserReport } from "@/lib/reports";
+import { AnalysisFailureStage, safeRecordAnalysisEvent } from "@/lib/system-health";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,8 +20,38 @@ function cleanExtractedText(value: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestStartedAt = Date.now();
+  const aiProvider = getAIProviderName();
+  const aiModel = getOpenAIModel();
+  let user: SessionUser | null = null;
+  let fileName = "";
+  let sourceLength = 0;
+  let providerLatencyMs = 0;
+  let firebaseWriteMs = 0;
+  let failureStage: AnalysisFailureStage = "validation";
+
+  async function fail(status: number, error: string, stage: AnalysisFailureStage) {
+    if (user) {
+      await safeRecordAnalysisEvent({
+        uid: user.uid,
+        fileName,
+        status: "failure",
+        aiProvider,
+        aiModel,
+        failureStage: stage,
+        errorMessage: error,
+        providerLatencyMs,
+        firebaseWriteMs,
+        totalDurationMs: Date.now() - requestStartedAt,
+        sourceLength
+      });
+    }
+
+    return NextResponse.json({ error }, { status });
+  }
+
   try {
-    const user = await requireRequestUser(request);
+    user = await requireRequestUser(request);
 
     if (!user) {
       return NextResponse.json({ error: "You must be signed in to analyze a PDF." }, { status: 401 });
@@ -30,35 +61,35 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Please upload a PDF file." }, { status: 400 });
+      return fail(400, "Please upload a PDF file.", "validation");
     }
+
+    fileName = file.name;
 
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
     if (!isPdf) {
-      return NextResponse.json({ error: "Only PDF uploads are supported." }, { status: 400 });
+      return fail(400, "Only PDF uploads are supported.", "validation");
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: "PDF is too large. Keep uploads under 10 MB." },
-        { status: 413 }
-      );
+      return fail(413, "PDF is too large. Keep uploads under 10 MB.", "validation");
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    failureStage = "pdf_parse";
     const pdfResult = await pdf(buffer);
     const extractedText = cleanExtractedText(pdfResult.text ?? "");
+    sourceLength = extractedText.length;
 
     if (!extractedText) {
-      return NextResponse.json(
-        { error: "No readable text was found in this PDF." },
-        { status: 422 }
-      );
+      return fail(422, "No readable text was found in this PDF.", "pdf_parse");
     }
 
+    failureStage = "llm";
+    const providerStartedAt = Date.now();
     const completion = await getOpenAIClient().chat.completions.create({
-      model: getOpenAIModel(),
+      model: aiModel,
       temperature: 0.2,
       response_format: {
         type: "json_object"
@@ -104,23 +135,38 @@ ${extractedText}`
         }
       ]
     });
+    providerLatencyMs = Date.now() - providerStartedAt;
 
     const modelContent = completion.choices[0]?.message?.content;
 
     if (!modelContent) {
-      return NextResponse.json(
-        { error: "OpenAI did not return a structured response." },
-        { status: 502 }
-      );
+      return fail(502, `${aiProvider} did not return a structured response.`, "llm");
     }
 
     const normalizedReport = normalizeStudyReport(JSON.parse(modelContent), file.name);
+    failureStage = "firestore";
+    const firebaseStartedAt = Date.now();
     const reportId = await saveUserReport({
       uid: user.uid,
       fileName: file.name,
       sourceExcerpt: extractedText.slice(0, 500),
+      sourceText: extractedText,
       sourceLength: extractedText.length,
       report: normalizedReport
+    });
+    firebaseWriteMs = Date.now() - firebaseStartedAt;
+
+    await safeRecordAnalysisEvent({
+      uid: user.uid,
+      fileName,
+      status: "success",
+      aiProvider,
+      aiModel,
+      providerLatencyMs,
+      firebaseWriteMs,
+      totalDurationMs: Date.now() - requestStartedAt,
+      sourceLength,
+      reportId
     });
 
     return NextResponse.json({
@@ -128,6 +174,23 @@ ${extractedText}`
       report: normalizedReport
     });
   } catch (error) {
+    if (user) {
+      await safeRecordAnalysisEvent({
+        uid: user.uid,
+        fileName,
+        status: "failure",
+        aiProvider,
+        aiModel,
+        failureStage,
+        errorMessage:
+          error instanceof Error ? error.message : "Unexpected failure while analyzing the PDF.",
+        providerLatencyMs,
+        firebaseWriteMs,
+        totalDurationMs: Date.now() - requestStartedAt,
+        sourceLength
+      });
+    }
+
     return NextResponse.json(
       {
         error:

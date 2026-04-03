@@ -15,5 +15,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/upload/:path*", "/results/:path*"]
+  matcher: ["/upload/:path*", "/results/:path*", "/system-health/:path*"]
 };

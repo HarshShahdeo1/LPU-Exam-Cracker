@@ -14,13 +14,18 @@ import { firebaseAuth } from "@/lib/firebase-client";
 type UploadDashboardProps = {
   userEmail: string | null;
   userName: string | null;
+  showSystemHealthLink: boolean;
 };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to complete this action.";
 }
 
-export function UploadDashboard({ userEmail, userName }: UploadDashboardProps) {
+export function UploadDashboard({
+  userEmail,
+  userName,
+  showSystemHealthLink
+}: UploadDashboardProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -164,9 +169,19 @@ export function UploadDashboard({ userEmail, userName }: UploadDashboardProps) {
               <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
                 {userEmail ?? "Authenticated user"}
               </span>
-              <Button variant="ghost" onClick={handleSignOut} disabled={isSigningOut}>
-                {isSigningOut ? "Signing out..." : "Sign out"}
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                {showSystemHealthLink && (
+                  <Link
+                    href="/system-health"
+                    className="inline-flex items-center justify-center rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-4 py-3 text-sm font-semibold text-[#ffe5de] transition duration-200 hover:-translate-y-0.5 hover:bg-[#ef4335]/16"
+                  >
+                    System Health
+                  </Link>
+                )}
+                <Button variant="ghost" onClick={handleSignOut} disabled={isSigningOut}>
+                  {isSigningOut ? "Signing out..." : "Sign out"}
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -307,12 +322,22 @@ export function UploadDashboard({ userEmail, userName }: UploadDashboardProps) {
                   Each report is shaped into study cards, topic tags, and answerable quiz prompts so
                   the output feels exam-oriented, not just summarized.
                 </div>
-                <Link
-                  href="/results"
-                  className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium transition hover:-translate-y-0.5 hover:bg-white/10"
-                >
-                  Open latest report
-                </Link>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/results"
+                    className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium transition hover:-translate-y-0.5 hover:bg-white/10"
+                  >
+                    Open latest report
+                  </Link>
+                  {showSystemHealthLink && (
+                    <Link
+                      href="/system-health"
+                      className="inline-flex rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-4 py-3 text-sm font-medium text-[#ffe5de] transition hover:-translate-y-0.5 hover:bg-[#ef4335]/16"
+                    >
+                      Open SRE dashboard
+                    </Link>
+                  )}
+                </div>
               </div>
             </GlassPanel>
           </motion.aside>
