@@ -25,7 +25,7 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
 
   if (!record) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#040405] px-6 py-10">
+      <main className="hero-noise flex min-h-screen items-center justify-center px-6 py-10">
         <GlassPanel className="max-w-2xl p-8 text-center">
           <p className="text-sm uppercase tracking-[0.26em] text-white/45">No Reports Yet</p>
           <h1 className="mt-4 text-3xl font-semibold text-white">Nothing to revise just yet.</h1>
@@ -47,13 +47,19 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#040405] px-6 py-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <header className="flex flex-col gap-5 rounded-[30px] border border-white/10 bg-white/[0.03] px-6 py-6 xl:flex-row xl:items-end xl:justify-between">
+    <main className="hero-noise relative min-h-screen overflow-hidden px-6 py-8">
+      <div className="spotlight left-[-10rem] top-[-3rem] h-80 w-80 bg-[#7c1116]/26" />
+      <div className="spotlight right-[-8rem] top-24 h-80 w-80 bg-[#ef4335]/14" />
+      <div className="absolute inset-0 bg-grid opacity-15" />
+      <div className="absolute inset-0 bg-grid-fine opacity-10" />
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8">
+        <header className="grid gap-6 rounded-[34px] border border-white/10 bg-white/[0.03] px-6 py-6 xl:grid-cols-[1.12fr,0.88fr] xl:items-end">
           <div className="space-y-3">
             <p className="text-sm uppercase tracking-[0.26em] text-white/45">Results</p>
             <div>
-              <h1 className="text-3xl font-semibold text-white">{record.report.courseTitle}</h1>
+              <h1 className="text-3xl font-semibold text-white md:text-4xl">
+                {record.report.courseTitle}
+              </h1>
               <p className="mt-2 max-w-3xl text-white/65">{record.report.overview}</p>
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-white/55">
@@ -69,13 +75,27 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/upload"
-              className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:bg-white/10"
-            >
-              Analyze another PDF
-            </Link>
+          <div className="grid gap-3 sm:grid-cols-[1fr,auto]">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { label: "Units", value: record.report.units.length.toString() },
+                { label: "Questions", value: activeQuestions.length.toString() },
+                { label: "Score", value: `${currentScore}/${activeQuestions.length}` }
+              ].map((stat) => (
+                <GlassPanel key={stat.label} className="p-4">
+                  <p className="text-xs uppercase tracking-[0.22em] text-white/40">{stat.label}</p>
+                  <p className="mt-2 text-xl font-semibold text-white">{stat.value}</p>
+                </GlassPanel>
+              ))}
+            </div>
+            <div className="flex items-end">
+              <Link
+                href="/upload"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-white/10"
+              >
+                Analyze another PDF
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -86,10 +106,10 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                 <button
                   key={unit.unitNumber}
                   onClick={() => setActiveUnit(index)}
-                  className={`rounded-2xl border px-4 py-3 text-left transition ${
+                  className={`rounded-[24px] border px-4 py-4 text-left transition ${
                     activeUnit === index
-                      ? "border-[#E14C3C]/50 bg-[#A50000]/18 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06]"
+                      ? "border-[#E14C3C]/50 bg-[linear-gradient(145deg,rgba(239,67,53,0.18),rgba(10,12,18,0.6))] text-white shadow-[0_20px_60px_rgba(165,0,0,0.16)]"
+                      : "border-white/10 bg-white/[0.03] text-white/70 hover:-translate-y-0.5 hover:bg-white/[0.06]"
                   }`}
                 >
                   <p className="text-xs uppercase tracking-[0.22em] text-white/45">Study Card</p>
@@ -109,12 +129,15 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
               >
                 <div>
                   <p className="text-sm uppercase tracking-[0.24em] text-white/45">Summary</p>
-                  <div className="mt-4 space-y-3">
-                    {record.report.units[activeUnit].summary.map((point) => (
+                  <div className="mt-4 grid gap-3">
+                    {record.report.units[activeUnit].summary.map((point, index) => (
                       <div
                         key={point}
-                        className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-white/80"
+                        className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-4 py-4 text-sm leading-7 text-white/80"
                       >
+                        <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#ef4335]/20 bg-[#ef4335]/10 text-[11px] font-medium text-[#ffd7cb]">
+                          0{index + 1}
+                        </span>
                         {point}
                       </div>
                     ))}
@@ -129,7 +152,7 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                     {record.report.units[activeUnit].highWeightageTopics.map((topic) => (
                       <span
                         key={topic}
-                        className="rounded-full border border-[#E14C3C]/30 bg-[#A50000]/12 px-4 py-2 text-sm text-[#FFD8D3]"
+                        className="rounded-full border border-[#E14C3C]/30 bg-[#A50000]/12 px-4 py-2 text-sm text-[#FFD8D3] shadow-[0_10px_30px_rgba(165,0,0,0.12)]"
                       >
                         {topic}
                       </span>
@@ -137,9 +160,10 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                   </div>
                 </div>
 
-                <GlassPanel className="p-5">
+                <GlassPanel className="relative overflow-hidden p-5">
+                  <div className="scanlines absolute inset-0" />
                   <p className="text-sm uppercase tracking-[0.24em] text-white/45">Source Hint</p>
-                  <p className="mt-3 text-sm leading-7 text-white/68">
+                  <p className="relative mt-3 text-sm leading-7 text-white/68">
                     {record.sourceExcerpt || "A source excerpt was not persisted for this report."}
                   </p>
                 </GlassPanel>
@@ -147,7 +171,8 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
             </AnimatePresence>
           </GlassPanel>
 
-          <GlassPanel className="p-6">
+          <GlassPanel className="relative overflow-hidden p-6">
+            <div className="scanlines absolute inset-0" />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-white/45">Practice Quiz</p>
@@ -169,7 +194,7 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                 return (
                   <div
                     key={question.question}
-                    className="rounded-[24px] border border-white/10 bg-black/20 p-5"
+                    className="relative rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),rgba(255,255,255,0.03))] p-5"
                   >
                     <p className="text-sm uppercase tracking-[0.24em] text-white/40">
                       MCQ {questionIndex + 1}
@@ -196,7 +221,7 @@ export function ResultsShell({ record, userEmail }: ResultsShellProps) {
                                 ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-100"
                                 : isSelected
                                   ? "border-[#E14C3C]/40 bg-[#A50000]/14 text-white"
-                                  : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.05]"
+                                  : "border-white/10 bg-white/[0.03] text-white/72 hover:-translate-y-0.5 hover:bg-white/[0.05]"
                             }`}
                           >
                             <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/20 text-xs text-white/70">

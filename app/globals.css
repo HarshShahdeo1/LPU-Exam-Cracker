@@ -4,12 +4,17 @@
 
 :root {
   color-scheme: dark;
-  --background: #040405;
+  --background: #06070c;
   --foreground: #f8f6f2;
-  --muted: rgba(255, 255, 255, 0.62);
+  --muted: rgba(241, 236, 230, 0.72);
+  --soft-muted: rgba(255, 255, 255, 0.52);
   --border: rgba(255, 255, 255, 0.12);
+  --surface: rgba(10, 12, 18, 0.72);
+  --surface-strong: rgba(18, 21, 31, 0.9);
   --crimson: #a50000;
   --crimson-soft: rgba(165, 0, 0, 0.25);
+  --crimson-bright: #ef4335;
+  --gold: #f4c26b;
 }
 
 * {
@@ -24,11 +29,13 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at top, rgba(165, 0, 0, 0.2), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 25%),
-    #040405;
+    radial-gradient(circle at 10% 10%, rgba(165, 0, 0, 0.22), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(244, 194, 107, 0.1), transparent 18%),
+    radial-gradient(circle at 60% 100%, rgba(239, 67, 53, 0.11), transparent 24%),
+    linear-gradient(145deg, #050609 0%, #090b12 45%, #040406 100%);
   color: var(--foreground);
   font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  overflow-x: hidden;
 }
 
 a {
@@ -50,10 +57,12 @@ textarea {
 .glass-panel {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04)),
-    rgba(8, 10, 16, 0.78);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025)),
+    linear-gradient(135deg, rgba(165, 0, 0, 0.08), transparent 30%),
+    var(--surface);
   box-shadow:
     0 25px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(24px);
 }
@@ -61,7 +70,124 @@ textarea {
 .crimson-ring {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 60px rgba(165, 0, 0, 0.22);
+    0 0 60px rgba(165, 0, 0, 0.22),
+    0 35px 90px rgba(0, 0, 0, 0.38);
+}
+
+.hero-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px);
+  background-size: 22px 22px, 28px 28px;
+  opacity: 0.18;
+  mix-blend-mode: screen;
+}
+
+.spotlight {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #fff7f1 0%, #ffd9ca 35%, #ef4335 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.surface-line {
+  position: relative;
+}
+
+.surface-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.02),
+    rgba(239, 67, 53, 0.16)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.scanlines {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0,
+    rgba(255, 255, 255, 0) 14%,
+    rgba(255, 255, 255, 0.02) 30%,
+    rgba(255, 255, 255, 0) 46%
+  );
+  background-size: 100% 18px;
+  opacity: 0.28;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+.float-slow {
+  animation: float 7s ease-in-out infinite;
+}
+
+.pulse-glow {
+  animation: pulse-glow 7s ease-in-out infinite;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.18),
+    transparent
+  );
+  animation: shimmer 2.6s linear infinite;
 }
 
 @layer utilities {
@@ -75,5 +201,17 @@ textarea {
       linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 32px 32px;
   }
-}
 
+  .bg-grid-fine {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .shadow-lift {
+    box-shadow:
+      0 30px 120px rgba(0, 0, 0, 0.42),
+      0 12px 35px rgba(165, 0, 0, 0.14);
+  }
+}

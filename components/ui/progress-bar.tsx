@@ -10,9 +10,9 @@ export function ProgressBar({ label, value }: ProgressBarProps) {
         <span>{label}</span>
         <span>{Math.round(value)}%</span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-white/10">
+      <div className="relative h-3 overflow-hidden rounded-full border border-white/10 bg-white/10">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-[#A50000] via-[#E14C3C] to-[#FFD2CE] transition-[width] duration-500 ease-out"
+          className="shimmer relative h-full overflow-hidden rounded-full bg-gradient-to-r from-[#751112] via-[#c92416] to-[#ffd7cb] transition-[width] duration-500 ease-out"
           style={{ width: `${value}%` }}
         />
       </div>

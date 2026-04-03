@@ -6,7 +6,7 @@ Production-ready Next.js 15 application that accepts LPU syllabus PDFs, extracts
 
 - Next.js 15 App Router with TypeScript
 - Tailwind CSS with Framer Motion for glassmorphism UI
-- Firebase Authentication for sign-in and password reset
+- Firebase Authentication for public signup, sign-in, and password reset
 - Firebase Admin SDK for secure session verification and Firestore writes
 - OpenAI-compatible LLM in JSON mode
 - Docker multi-stage build on `node:20-alpine`
@@ -15,7 +15,7 @@ Production-ready Next.js 15 application that accepts LPU syllabus PDFs, extracts
 
 - Figma-inspired dark landing page with LPU Crimson accents
 - Protected `/upload` and `/results` routes via `middleware.ts`
-- Firebase email/password login with `sendPasswordResetEmail`
+- Firebase email/password signup and login with `sendPasswordResetEmail`
 - PDF upload dashboard with animated progress feedback
 - `/api/analyze` pipeline that parses the PDF, calls OpenAI, normalizes the JSON response, and stores it in Firestore `userReports`
 - Results screen with study cards and per-unit practice quiz sections
