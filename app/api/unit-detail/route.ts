@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
     const reportId   = typeof body?.reportId   === "string" ? body.reportId.trim()  : "";
     const unitNumber = typeof body?.unitNumber  === "number" ? body.unitNumber       : null;
     const unitTitle  = typeof body?.unitTitle   === "string" ? body.unitTitle.trim() : "";
-    const summary    = Array.isArray(body?.summary) ? body.summary : [];
 
     if (!reportId || !unitNumber || !unitTitle) {
       return NextResponse.json({ error: "Missing reportId, unitNumber, or unitTitle." }, { status: 400 });

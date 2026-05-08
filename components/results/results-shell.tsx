@@ -24,7 +24,7 @@ type UnitDetail = {
   keyTerms:   Array<{ term: string; definition: string }>;
   formulae:   Array<{ name: string; expression: string; note: string }>;
   examTips:   string[];
-  mcqs:       Array<{ question: string; options: string[]; answerIndex: number; explanation?: string }>;
+  mcqs:       Array<{ question: string; options: string[]; correctAnswerIndex: number; explanation?: string }>;
 };
 
 const TAB_CONFIG: Array<{ id: Tab; label: string; icon: string; always?: boolean }> = [
