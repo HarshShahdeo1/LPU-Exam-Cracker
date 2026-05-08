@@ -614,8 +614,8 @@ export function ResultsShell({
       <SyllabusChat 
         reportId={record.id}
         courseTitle={record.report.courseTitle}
-        activeUnitNumber={unit.unitNumber}
-        activeUnitTitle={unit.unitTitle}
+        activeUnitNumber={unit?.unitNumber ?? 0}
+        activeUnitTitle={unit?.unitTitle ?? ""}
         hasSourceText={record.hasSourceText}
         deepStudyContext={detail?.subtopics?.map(s => s.title) || []}
       />
