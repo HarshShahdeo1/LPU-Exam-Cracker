@@ -24,7 +24,7 @@ type UnitDetail = {
   keyTerms:   Array<{ term: string; definition: string }>;
   formulae:   Array<{ name: string; expression: string; note: string }>;
   examTips:   string[];
-  mcqs:       any[];
+  mcqs:       Array<{ question: string; options: string[]; answerIndex: number; explanation?: string }>;
 };
 
 const TAB_CONFIG: Array<{ id: Tab; label: string; icon: string; always?: boolean }> = [
@@ -40,7 +40,6 @@ const TAB_CONFIG: Array<{ id: Tab; label: string; icon: string; always?: boolean
 export function ResultsShell({
   record,
   libraryReports,
-  userEmail: _userEmail,
   showSystemHealthLink
 }: ResultsShellProps) {
   const [activeUnit, setActiveUnit] = useState(0);
@@ -321,7 +320,7 @@ export function ResultsShell({
                               ))
                             ) : (
                               <div className="rounded-[20px] border border-dashed border-[#d6dbe4] bg-[#f8fafc] p-10 text-center">
-                                <p className="text-sm text-[#718093]">Unit summary hasn't been generated yet.</p>
+                                <p className="text-sm text-[#718093]">Unit summary hasn&apos;t been generated yet.</p>
                                 <button
                                   onClick={() => fetchUnitDetail(record.id, unit!)}
                                   className="mt-4 text-sm font-semibold text-[#3d90ec] hover:underline"

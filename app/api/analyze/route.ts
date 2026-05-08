@@ -23,9 +23,9 @@ function cleanExtractedText(value: string) {
  * Robustly extract the first complete JSON object from a string.
  * Handles cases where the model wraps JSON in markdown fences or adds trailing text.
  */
-function extractJSON(text: string): any {
+function extractJSON(text: string): unknown {
   // 1. Strip ```json ... ``` fences
-  let cleaned = text.replace(/^```[\w]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  const cleaned = text.replace(/^```[\w]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
 
   // 2. Try direct parse first
   try {
@@ -184,7 +184,7 @@ ${extractedText}`
       return fail(502, `${aiProvider} did not return a structured response.`, "llm");
     }
 
-    let parsedContent: any;
+    let parsedContent: unknown;
     try {
       parsedContent = extractJSON(rawContent);
     } catch (parseErr) {

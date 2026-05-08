@@ -93,6 +93,7 @@ ${question}`
       extra_body: {
         chat_template_kwargs: { thinking: false }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const answer = completion.choices[0]?.message?.content?.trim();
@@ -113,7 +114,7 @@ ${question}`
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : "Unexpected error in syllabus chat.",
-        details: error instanceof Error ? (error as any).status : undefined
+        details: error instanceof Error ? (error as { status?: number }).status : undefined
       },
       { status: 500 }
     );

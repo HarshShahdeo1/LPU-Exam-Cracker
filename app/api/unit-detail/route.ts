@@ -19,7 +19,7 @@ const SYSTEM_PROMPT =
  */
 function extractJSON(text: string): unknown {
   // 1. Strip ```json ... ``` fences
-  let cleaned = text.replace(/^```[\w]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  const cleaned = text.replace(/^```[\w]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
 
   // 2. Try direct parse first
   try {
@@ -103,9 +103,6 @@ export async function POST(request: NextRequest) {
 
     // Trim syllabus text to avoid token overflow
     const syllabusSlice = context.sourceText.slice(0, MAX_SYLLABUS_CHARS);
-    const summaryText   = summary.length
-      ? summary.map((s, i) => `${i + 1}. ${s}`).join("\n")
-      : "Not available.";
 
     const completion = await getOpenAIClient().chat.completions.create({
       model: getOpenAIModel(),
