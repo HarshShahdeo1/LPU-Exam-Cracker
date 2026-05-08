@@ -1,218 +1,160 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { getAdminDb } from "@/lib/firebase-admin";
-import { getAIProviderName, getOpenAIModel } from "@/lib/openai";
-import {
-  AnalysisEvent,
-  AnalysisFailureStage,
-  AnalysisStatus,
-  HealthChartPoint,
-  SystemHealthSnapshot
-} from "@/types/system-health";
+import { AnalysisEvent, ChartPoint, SystemHealthSnapshot } from "@/types/system-health";
 
-const ANALYSIS_EVENTS_COLLECTION = "analysisEvents";
-const DASHBOARD_SAMPLE_SIZE = 60;
-const CHART_DAY_COUNT = 7;
+const AI_PROVIDER = "Groq";
+const AI_MODEL = process.env.OPENAI_MODEL ?? "llama-3.3-70b-versatile";
 
-type RecordAnalysisEventInput = {
+export type AnalysisFailureStage = "validation" | "pdf_parse" | "llm" | "firestore";
+
+export async function safeRecordAnalysisEvent(params: {
   uid: string;
-  fileName?: string;
-  status: AnalysisStatus;
-  aiProvider?: string;
-  aiModel?: string;
-  providerLatencyMs?: number;
-  firebaseWriteMs?: number;
-  totalDurationMs?: number;
-  sourceLength?: number;
-  reportId?: string;
-  failureStage?: AnalysisFailureStage;
-  errorMessage?: string;
-};
-
-function isAnalysisFailureStage(value: unknown): value is AnalysisFailureStage {
-  return (
-    value === "validation" ||
-    value === "pdf_parse" ||
-    value === "llm" ||
-    value === "firestore" ||
-    value === "response"
-  );
+  fileName: string;
+  status: "success" | "failure";
+  aiProvider: string;
+  aiModel: string;
+  providerLatencyMs: number | null;
+  firebaseWriteMs: number | null;
+  totalDurationMs: number | null;
+  sourceLength: number;
+  reportId?: string | null;
+  failureStage?: AnalysisFailureStage | string | null;
+  errorMessage?: string | null;
+}) {
+  try {
+    const db = getAdminDb();
+    await db.collection("analysisEvents").add({
+      ...params,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Failed to record analysis event:", error);
+  }
 }
 
-function serializeTimestamp(value: unknown) {
-  if (value instanceof Timestamp) {
-    return value.toDate().toISOString();
-  }
+function toMs(value: unknown): number | null {
+  return typeof value === "number" && isFinite(value) ? Math.round(value) : null;
+}
 
-  if (
-    value &&
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof value.toDate === "function"
-  ) {
-    return value.toDate().toISOString();
+function toIso(value: unknown): string | null {
+  if (value instanceof Timestamp) return value.toDate().toISOString();
+  if (value && typeof value === "object" && "toDate" in value && typeof (value as Timestamp).toDate === "function") {
+    return (value as Timestamp).toDate().toISOString();
   }
-
   return null;
 }
 
-function mapAnalysisEvent(id: string, value: FirebaseFirestore.DocumentData): AnalysisEvent {
+function percentile(sorted: number[], p: number): number | null {
+  if (!sorted.length) return null;
+  const idx = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[Math.max(0, idx)];
+}
+
+function average(values: number[]): number | null {
+  if (!values.length) return null;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+}
+
+function mapEvent(id: string, d: FirebaseFirestore.DocumentData): AnalysisEvent {
   return {
     id,
-    uid: value.uid ?? "",
-    fileName: value.fileName ?? "Untitled syllabus",
-    status: value.status === "failure" ? "failure" : "success",
-    aiProvider: value.aiProvider ?? getAIProviderName(),
-    aiModel: value.aiModel ?? getOpenAIModel(),
-    providerLatencyMs: typeof value.providerLatencyMs === "number" ? value.providerLatencyMs : 0,
-    firebaseWriteMs: typeof value.firebaseWriteMs === "number" ? value.firebaseWriteMs : 0,
-    totalDurationMs: typeof value.totalDurationMs === "number" ? value.totalDurationMs : 0,
-    sourceLength: typeof value.sourceLength === "number" ? value.sourceLength : 0,
-    reportId: typeof value.reportId === "string" ? value.reportId : null,
-    failureStage: isAnalysisFailureStage(value.failureStage) ? value.failureStage : null,
-    errorMessage: typeof value.errorMessage === "string" ? value.errorMessage : null,
-    createdAt: serializeTimestamp(value.createdAt)
+    status: d.status === "failure" ? "failure" : "success",
+    fileName: typeof d.fileName === "string" ? d.fileName : "unknown",
+    aiProvider: typeof d.aiProvider === "string" ? d.aiProvider : AI_PROVIDER,
+    aiModel: typeof d.aiModel === "string" ? d.aiModel : AI_MODEL,
+    providerLatencyMs: toMs(d.providerLatencyMs),
+    firebaseWriteMs: toMs(d.firebaseWriteMs),
+    totalDurationMs: toMs(d.totalDurationMs),
+    sourceLength: typeof d.sourceLength === "number" ? d.sourceLength : 0,
+    reportId: typeof d.reportId === "string" ? d.reportId : null,
+    failureStage: typeof d.failureStage === "string" ? d.failureStage : null,
+    errorMessage: typeof d.errorMessage === "string" ? d.errorMessage : null,
+    createdAt: toIso(d.createdAt),
   };
 }
 
-function average(values: number[]) {
-  if (!values.length) {
-    return null;
-  }
+function buildChartPoints(events: AnalysisEvent[]): ChartPoint[] {
+  // Group by day label (last 7 days)
+  const days: Record<string, { success: number; failure: number }> = {};
+  const now = new Date();
 
-  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
-}
-
-function percentile(values: number[], percentileValue: number) {
-  if (!values.length) {
-    return null;
-  }
-
-  const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.min(
-    sorted.length - 1,
-    Math.max(0, Math.ceil((percentileValue / 100) * sorted.length) - 1)
-  );
-
-  return sorted[index];
-}
-
-function getEventTime(event: AnalysisEvent) {
-  return event.createdAt ? new Date(event.createdAt).getTime() : 0;
-}
-
-function buildChartPoints(events: AnalysisEvent[]) {
-  const formatter = new Intl.DateTimeFormat("en-IN", {
-    weekday: "short"
-  });
-  const buckets = new Map<string, HealthChartPoint>();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let index = CHART_DAY_COUNT - 1; index >= 0; index -= 1) {
-    const day = new Date(today);
-    day.setDate(today.getDate() - index);
-    const key = day.toISOString().slice(0, 10);
-
-    buckets.set(key, {
-      label: formatter.format(day),
-      successCount: 0,
-      failureCount: 0,
-      totalCount: 0
-    });
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const label = d.toLocaleDateString("en-IN", { weekday: "short" });
+    days[label] = { success: 0, failure: 0 };
   }
 
   for (const event of events) {
-    if (!event.createdAt) {
-      continue;
-    }
-
-    const key = event.createdAt.slice(0, 10);
-    const bucket = buckets.get(key);
-
-    if (!bucket) {
-      continue;
-    }
-
-    bucket.totalCount += 1;
-
-    if (event.status === "success") {
-      bucket.successCount += 1;
-    } else {
-      bucket.failureCount += 1;
+    if (!event.createdAt) continue;
+    const d = new Date(event.createdAt);
+    const label = d.toLocaleDateString("en-IN", { weekday: "short" });
+    if (label in days) {
+      if (event.status === "success") days[label].success++;
+      else days[label].failure++;
     }
   }
 
-  return Array.from(buckets.values());
-}
-
-export async function recordAnalysisEvent(input: RecordAnalysisEventInput) {
-  await getAdminDb().collection(ANALYSIS_EVENTS_COLLECTION).add({
-    uid: input.uid,
-    fileName: input.fileName ?? "Untitled syllabus",
-    status: input.status,
-    aiProvider: input.aiProvider ?? getAIProviderName(),
-    aiModel: input.aiModel ?? getOpenAIModel(),
-    providerLatencyMs: input.providerLatencyMs ?? 0,
-    firebaseWriteMs: input.firebaseWriteMs ?? 0,
-    totalDurationMs: input.totalDurationMs ?? 0,
-    sourceLength: input.sourceLength ?? 0,
-    reportId: input.reportId ?? null,
-    failureStage: input.failureStage ?? null,
-    errorMessage: input.errorMessage ?? null,
-    createdAt: FieldValue.serverTimestamp()
-  });
-}
-
-export async function safeRecordAnalysisEvent(input: RecordAnalysisEventInput) {
-  try {
-    await recordAnalysisEvent(input);
-  } catch (error) {
-    console.error("Failed to record system health event", error);
-  }
+  return Object.entries(days).map(([label, counts]) => ({
+    label,
+    successCount: counts.success,
+    failureCount: counts.failure,
+    totalCount: counts.success + counts.failure,
+  }));
 }
 
 export async function getSystemHealthSnapshot(): Promise<SystemHealthSnapshot> {
-  const snapshot = await getAdminDb()
-    .collection(ANALYSIS_EVENTS_COLLECTION)
-    .orderBy("createdAt", "desc")
-    .limit(DASHBOARD_SAMPLE_SIZE)
-    .get();
+  // Try to fetch from analysisEvents collection; fall back to empty if missing
+  let events: AnalysisEvent[] = [];
 
-  const recentEvents = snapshot.docs.map((doc) => mapAnalysisEvent(doc.id, doc.data()));
-  const successfulEvents = recentEvents.filter((event) => event.status === "success");
-  const failedEvents = recentEvents.filter((event) => event.status === "failure");
-  const providerLatencies = successfulEvents
-    .map((event) => event.providerLatencyMs)
-    .filter((value) => value > 0);
-  const firebaseLatencies = successfulEvents
-    .map((event) => event.firebaseWriteMs)
-    .filter((value) => value > 0);
-  const totalDurations = recentEvents
-    .map((event) => event.totalDurationMs)
-    .filter((value) => value > 0);
+  try {
+    const snap = await getAdminDb()
+      .collection("analysisEvents")
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get();
+
+    events = snap.docs.map((doc) => mapEvent(doc.id, doc.data()));
+  } catch {
+    // Collection may not exist yet — return empty snapshot
+  }
+
+  const successful = events.filter((e) => e.status === "success");
+  const failed = events.filter((e) => e.status === "failure");
+
+  const providerLatencies = successful
+    .map((e) => e.providerLatencyMs)
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => a - b);
+
+  const firebaseLatencies = successful
+    .map((e) => e.firebaseWriteMs)
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => a - b);
+
+  const totalDurations = successful
+    .map((e) => e.totalDurationMs)
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => a - b);
+
+  const total = events.length;
+  const successRate = total > 0 ? (successful.length / total) * 100 : 100;
 
   return {
-    aiProvider: recentEvents[0]?.aiProvider ?? getAIProviderName(),
-    aiModel: recentEvents[0]?.aiModel ?? getOpenAIModel(),
-    totalTrackedEvents: recentEvents.length,
-    successfulAnalyses: successfulEvents.length,
-    failedUploads: failedEvents.length,
-    successRate: recentEvents.length
-      ? Math.round((successfulEvents.length / recentEvents.length) * 100)
-      : 0,
+    aiProvider: AI_PROVIDER,
+    aiModel: AI_MODEL,
+    totalTrackedEvents: total,
+    successfulAnalyses: successful.length,
+    failedUploads: failed.length,
+    successRate,
     averageProviderLatencyMs: average(providerLatencies),
     p95ProviderLatencyMs: percentile(providerLatencies, 95),
     averageFirebaseWriteMs: average(firebaseLatencies),
     p95FirebaseWriteMs: percentile(firebaseLatencies, 95),
     averageTotalDurationMs: average(totalDurations),
-    recentEvents,
-    latestSuccess: successfulEvents[0] ?? null,
-    latestFailure: failedEvents[0] ?? null,
-    chartPoints: buildChartPoints(
-      [...recentEvents].sort((left, right) => getEventTime(left) - getEventTime(right))
-    )
+    latestFailure: failed[0] ?? null,
+    recentEvents: events.slice(0, 20),
+    chartPoints: buildChartPoints(events),
   };
 }
-
-export type { AnalysisFailureStage };

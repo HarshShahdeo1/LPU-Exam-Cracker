@@ -1,30 +1,20 @@
-export type AnalysisStatus = "success" | "failure";
-
-export type AnalysisFailureStage =
-  | "validation"
-  | "pdf_parse"
-  | "llm"
-  | "firestore"
-  | "response";
-
 export type AnalysisEvent = {
   id: string;
-  uid: string;
+  status: "success" | "failure";
   fileName: string;
-  status: AnalysisStatus;
   aiProvider: string;
   aiModel: string;
-  providerLatencyMs: number;
-  firebaseWriteMs: number;
-  totalDurationMs: number;
+  providerLatencyMs: number | null;
+  firebaseWriteMs: number | null;
+  totalDurationMs: number | null;
   sourceLength: number;
   reportId: string | null;
-  failureStage: AnalysisFailureStage | null;
+  failureStage: string | null;
   errorMessage: string | null;
   createdAt: string | null;
 };
 
-export type HealthChartPoint = {
+export type ChartPoint = {
   label: string;
   successCount: number;
   failureCount: number;
@@ -43,8 +33,7 @@ export type SystemHealthSnapshot = {
   averageFirebaseWriteMs: number | null;
   p95FirebaseWriteMs: number | null;
   averageTotalDurationMs: number | null;
-  recentEvents: AnalysisEvent[];
-  latestSuccess: AnalysisEvent | null;
   latestFailure: AnalysisEvent | null;
-  chartPoints: HealthChartPoint[];
+  recentEvents: AnalysisEvent[];
+  chartPoints: ChartPoint[];
 };

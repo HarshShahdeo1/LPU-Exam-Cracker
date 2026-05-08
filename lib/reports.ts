@@ -100,6 +100,51 @@ function resolveCorrectAnswerIndex(correctAnswer: unknown, options: string[]) {
   return 0;
 }
 
+function normalizeSubtopics(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const result = value
+    .filter((s) => s && typeof s === "object" && "title" in s && "explanation" in s)
+    .map((s) => ({
+      title:       typeof s.title === "string"       ? s.title.trim()       : "",
+      explanation: typeof s.explanation === "string"  ? s.explanation.trim() : ""
+    }))
+    .filter((s) => s.title);
+  return result.length ? result : undefined;
+}
+
+function normalizeKeyTerms(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const result = value
+    .filter((k) => k && typeof k === "object" && "term" in k && "definition" in k)
+    .map((k) => ({
+      term:       typeof k.term === "string"       ? k.term.trim()       : "",
+      definition: typeof k.definition === "string" ? k.definition.trim() : ""
+    }))
+    .filter((k) => k.term);
+  return result.length ? result : undefined;
+}
+
+function normalizeFormulae(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const result = value
+    .filter((f) => f && typeof f === "object" && "expression" in f)
+    .map((f) => ({
+      name:       typeof f.name === "string"       ? f.name.trim()       : "Formula",
+      expression: typeof f.expression === "string" ? f.expression.trim() : "",
+      note:       typeof f.note === "string"       ? f.note.trim()       : ""
+    }))
+    .filter((f) => f.expression);
+  return result.length ? result : undefined;
+}
+
+function normalizeExamTips(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  const result = value
+    .map((t) => (typeof t === "string" ? t.trim() : ""))
+    .filter(Boolean);
+  return result.length ? result : undefined;
+}
+
 function normalizeStudyUnit(candidate: unknown, index: number) {
   const unit = candidate && typeof candidate === "object" ? candidate : {};
   const sourceMcqs =
@@ -108,7 +153,14 @@ function normalizeStudyUnit(candidate: unknown, index: number) {
       : "questions" in unit && Array.isArray(unit.questions)
         ? unit.questions
         : [];
-  const optionsList = Array.from({ length: 5 }, (_, questionIndex) => sourceMcqs[questionIndex]);
+  const mcqCount = sourceMcqs.length || 1;
+  const optionsList = Array.from({ length: mcqCount }, (_, questionIndex) => sourceMcqs[questionIndex]);
+
+  // Resolve optional deep-study fields — omit the key entirely if empty/missing
+  const subtopics = normalizeSubtopics("subtopics" in unit ? unit.subtopics : undefined);
+  const keyTerms  = normalizeKeyTerms("keyTerms"   in unit ? unit.keyTerms  : undefined);
+  const formulae  = normalizeFormulae("formulae"   in unit ? unit.formulae  : undefined);
+  const examTips  = normalizeExamTips("examTips"   in unit ? unit.examTips  : undefined);
 
   return {
     unitNumber:
@@ -127,13 +179,22 @@ function normalizeStudyUnit(candidate: unknown, index: number) {
       3,
       "High-weightage topic"
     ),
-    mcqs: optionsList.slice(0, 5).map((question, questionIndex) => {
+    // Spread optional fields only when they have values — prevents Firestore "undefined" error
+    ...(subtopics ? { subtopics } : {}),
+    ...(keyTerms  ? { keyTerms  } : {}),
+    ...(formulae  ? { formulae  } : {}),
+    ...(examTips  ? { examTips  } : {}),
+    mcqs: optionsList.map((question, questionIndex) => {
       const questionObject = question && typeof question === "object" ? question : {};
       const options = normalizeOptions(
         "options" in questionObject ? questionObject.options : undefined
       );
       const correctAnswerIndex = resolveCorrectAnswerIndex(
-        "correctAnswer" in questionObject ? questionObject.correctAnswer : undefined,
+        "correctAnswerIndex" in questionObject
+          ? questionObject.correctAnswerIndex
+          : "correctAnswer" in questionObject
+            ? questionObject.correctAnswer
+            : undefined,
         options
       );
 
@@ -158,6 +219,7 @@ function normalizeStudyUnit(candidate: unknown, index: number) {
   };
 }
 
+
 export function normalizeStudyReport(value: unknown, fileName: string): StudyReport {
   const payload = value && typeof value === "object" ? value : {};
   const sourceUnits =
@@ -167,7 +229,8 @@ export function normalizeStudyReport(value: unknown, fileName: string): StudyRep
         ? payload.studyUnits
         : [];
 
-  const units = Array.from({ length: 4 }, (_, index) =>
+  const unitsCount = sourceUnits.length || 1;
+  const units = Array.from({ length: unitsCount }, (_, index) =>
     normalizeStudyUnit(sourceUnits[index], index)
   );
 

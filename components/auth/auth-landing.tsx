@@ -4,16 +4,10 @@ import type { FormEvent } from "react";
 import { startTransition, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  updateProfile
-} from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 
 import { AuthHeroPanel } from "@/components/auth/auth-hero-panel";
-import { Button } from "@/components/ui/button";
-import { GlassPanel } from "@/components/ui/glass-panel";
+import { ConfettiCanvas } from "@/components/auth/confetti-canvas";
 import { firebaseAuth } from "@/lib/firebase-client";
 
 function getErrorMessage(error: unknown) {
@@ -22,100 +16,62 @@ function getErrorMessage(error: unknown) {
       case "auth/configuration-not-found":
         return "Firebase Authentication is not fully configured yet. Enable Email/Password sign-in in Firebase Console > Authentication > Sign-in method.";
       case "auth/operation-not-allowed":
-        return "Email/password sign-in is disabled for this Firebase project. Enable it in Firebase Console > Authentication > Sign-in method.";
+        return "Email/password sign-in is disabled for this Firebase project.";
       case "auth/email-already-in-use":
         return "That email is already registered. Switch to Login or use Forgot Password.";
       case "auth/invalid-credential":
       case "auth/wrong-password":
         return "The email or password is incorrect.";
       case "auth/user-not-found":
-        return "No Firebase Auth user exists for this email yet.";
+        return "No account found for this email.";
       case "auth/invalid-email":
         return "Enter a valid email address.";
       case "auth/weak-password":
-        return "Choose a stronger password with at least 6 characters.";
+        return "Choose a stronger password — at least 6 characters.";
       case "auth/too-many-requests":
-        return "Too many authentication attempts. Wait a moment and try again.";
+        return "Too many attempts. Wait a moment and try again.";
       default:
-        if ("message" in error && typeof error.message === "string") {
-          return error.message;
-        }
+        if ("message" in error && typeof error.message === "string") return error.message;
     }
   }
-
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 }
 
 export function AuthLanding() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email,        setEmail]        = useState("");
+  const [password,     setPassword]     = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [infoMessage, setInfoMessage] = useState("");
+  const [infoMessage,  setInfoMessage]  = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   async function createServerSession(idToken: string) {
-    const response = await fetch("/api/auth/session", {
+    const res = await fetch("/api/auth/session", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ idToken })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken }),
     });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
       throw new Error(payload?.error ?? "Unable to create a server session.");
     }
   }
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleLogin(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage("");
     setInfoMessage("");
-
     try {
-      const credential =
-        mode === "login"
-          ? await signInWithEmailAndPassword(firebaseAuth, email, password)
-          : await (async () => {
-              if (!fullName.trim()) {
-                throw new Error("Enter your full name to create an account.");
-              }
-
-              if (password !== confirmPassword) {
-                throw new Error("Password and confirm password do not match.");
-              }
-
-              const signupCredential = await createUserWithEmailAndPassword(
-                firebaseAuth,
-                email,
-                password
-              );
-
-              await updateProfile(signupCredential.user, {
-                displayName: fullName.trim()
-              });
-
-              return signupCredential;
-            })();
-      const idToken = await credential.user.getIdToken();
+      const cred    = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      const idToken = await cred.user.getIdToken();
       await createServerSession(idToken);
-
-      const requestedPath = searchParams.get("next");
-      const nextPath = requestedPath?.startsWith("/") ? requestedPath : "/upload";
-
-      startTransition(() => {
-        router.push(nextPath);
-        router.refresh();
-      });
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      const next = searchParams.get("next");
+      const path = next?.startsWith("/") ? next : "/upload";
+      startTransition(() => { router.push(path); router.refresh(); });
+    } catch (err) {
+      setErrorMessage(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -124,198 +80,194 @@ export function AuthLanding() {
   async function handleForgotPassword() {
     setErrorMessage("");
     setInfoMessage("");
-
     if (!email.trim()) {
-      setErrorMessage("Enter your email address first, then trigger the password reset flow.");
+      setErrorMessage("Enter your email address first, then click Forgot Password.");
       return;
     }
-
     try {
       await sendPasswordResetEmail(firebaseAuth, email.trim());
-      setInfoMessage("Password reset email sent. Check your inbox for the recovery link.");
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setInfoMessage("Reset email sent — check your inbox.");
+    } catch (err) {
+      setErrorMessage(getErrorMessage(err));
     }
   }
 
   return (
-    <main className="hero-noise relative min-h-screen overflow-hidden">
-      <div className="spotlight pulse-glow left-[-10%] top-[-10%] h-[28rem] w-[28rem] bg-[#7c1116]/30" />
-      <div className="spotlight right-[-6%] top-[8%] h-[24rem] w-[24rem] bg-[#ef4335]/16" />
-      <div className="absolute inset-0 bg-grid opacity-20" />
-      <div className="absolute inset-0 bg-grid-fine opacity-15" />
-      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl gap-10 px-6 py-10 lg:grid-cols-[1.15fr,0.85fr] lg:items-center lg:px-10">
+    <main className="relative min-h-screen overflow-hidden bg-[#f8f9fa]">
+
+      {/* ── Confetti canvas (always active) ── */}
+      <ConfettiCanvas />
+
+      {/* ── Very subtle dot grid so background isn't totally flat ── */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.35]"
+        style={{
+          backgroundImage: "radial-gradient(circle, #c8cdd5 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }} />
+
+      {/* ── Navbar ── */}
+      <nav className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-6 py-5 sm:px-8">
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center gap-3"
+        >
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#22000f] text-sm font-black text-white shadow-lg">
+            L
+            <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#f8f9fa] bg-[#dfff57]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#172233]">LPU Exam Cracker</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#718093]">AI Powered</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="hidden items-center gap-1.5 rounded-full border border-[#e2e6ec] bg-white px-4 py-2 shadow-sm sm:flex"
+        >
+          <span className="h-2 w-2 rounded-full bg-[#2fd400]" style={{ boxShadow: "0 0 5px #2fd400" }} />
+          <span className="text-xs font-medium text-[#718093]">All systems online</span>
+        </motion.div>
+      </nav>
+
+      {/* ── Main grid ── */}
+      <div className="relative z-10 mx-auto mt-4 grid max-w-6xl items-center gap-8 px-6 pb-16 sm:px-8 xl:mt-12 xl:grid-cols-2 xl:gap-20">
+
+        {/* Left hero */}
         <AuthHeroPanel />
 
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.75, delay: 0.1 }}
-          className="w-full max-w-xl justify-self-end"
+        {/* Right card */}
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0,  scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
-          <GlassPanel className="crimson-ring relative overflow-hidden p-8 sm:p-10">
-            <div className="spotlight right-[-4rem] top-[-6rem] h-40 w-40 bg-[#ef4335]/20" />
-            <div className="relative">
-            <div className="mb-8 space-y-2">
-              <p className="text-sm uppercase tracking-[0.26em] text-white/50">
-                {mode === "login" ? "Secure Login" : "Public Signup"}
-              </p>
-              <h2 className="text-3xl font-semibold text-white">
-                {mode === "login" ? "Enter the workspace" : "Create your account"}
-              </h2>
-              <p className="text-sm leading-7 text-white/60">
-                {mode === "login"
-                  ? "Sign in with your Firebase Auth email and password to start analyzing syllabus PDFs."
-                  : "Create a Firebase-backed account and start analyzing syllabus PDFs right away."}
-              </p>
+          <div className="rounded-[32px] border border-[#e2e6ec] bg-white p-7 shadow-[0_20px_60px_rgba(23,34,51,0.10)] sm:p-9">
+
+            {/* Card header */}
+            <div className="mb-7">
+              {/* Colourful dot row — inspired by confetti */}
+              <div className="mb-5 flex gap-1.5">
+                {["#ef4335","#dfff57","#3d90ec","#ab95fb","#2fd400","#ff7417"].map((c) => (
+                  <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
+                ))}
+              </div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#718093]">Secure access</p>
+              <h2 className="mt-2 text-3xl font-black text-[#172233]">Welcome back 👋</h2>
+              <p className="mt-1.5 text-sm text-[#718093]">Sign in to start your AI revision session</p>
             </div>
 
-            <div className="mb-6 grid grid-cols-2 rounded-2xl border border-white/10 bg-black/20 p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  setErrorMessage("");
-                  setInfoMessage("");
-                }}
-                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  mode === "login"
-                    ? "bg-white/10 text-white"
-                    : "text-white/55 hover:text-white"
-                }`}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("signup");
-                  setErrorMessage("");
-                  setInfoMessage("");
-                }}
-                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  mode === "signup"
-                    ? "bg-white/10 text-white"
-                    : "text-white/55 hover:text-white"
-                }`}
-              >
-                Sign up
-              </button>
-            </div>
+            <form className="space-y-4" onSubmit={handleLogin}>
 
-            <form className="space-y-5" onSubmit={handleLogin}>
-              {mode === "signup" && (
-                <label className="block space-y-2">
-                  <span className="text-sm text-white/70">Full Name</span>
+              {/* Email */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-[#344255]">Email</label>
+                <div className="relative">
+                  <svg className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9ba6ba]" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
                   <input
-                    type="text"
-                    autoComplete="name"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    placeholder="Harsh Shahdeo"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-[#E14C3C] focus:bg-black/40"
-                    required
+                    type="email" autoComplete="email" required
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@lpu.in"
+                    suppressHydrationWarning
+                    className="w-full rounded-2xl border border-[#d6dce7] bg-[#f8fafc] py-3.5 pl-10 pr-4 text-sm text-[#172233] outline-none transition placeholder:text-[#b0bac9] focus:border-[#22000f]/40 focus:bg-white focus:shadow-[0_0_0_3px_rgba(34,0,15,0.06)]"
                   />
-                </label>
-              )}
-
-              <label className="block space-y-2">
-                <span className="text-sm text-white/70">Email</span>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@lpu.in"
-                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-[#E14C3C] focus:bg-black/40"
-                  required
-                />
-              </label>
-
-              <label className="block space-y-2">
-                <span className="text-sm text-white/70">Password</span>
-                <input
-                  type="password"
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder={mode === "login" ? "Enter your password" : "Create a password"}
-                  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-[#E14C3C] focus:bg-black/40"
-                  required
-                />
-              </label>
-
-              {mode === "signup" && (
-                <label className="block space-y-2">
-                  <span className="text-sm text-white/70">Confirm Password</span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Re-enter your password"
-                    className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-[#E14C3C] focus:bg-black/40"
-                    required
-                  />
-                </label>
-              )}
-
-              <div className="flex items-center justify-between gap-4 text-sm">
-                {mode === "login" ? (
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-white/60 transition hover:text-white"
-                  >
-                    Forgot Password
-                  </button>
-                ) : (
-                  <span className="text-white/55">Open signup with secure Firebase sessions</span>
-                )}
-                <span className="text-right text-white/40">
-                  {mode === "login"
-                    ? "Firebase session secured on sign-in"
-                    : "Firebase session secured on sign-up"}
-                </span>
+                </div>
               </div>
 
+              {/* Password */}
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-[#344255]">Password</label>
+                <div className="relative">
+                  <svg className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9ba6ba]" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  <input
+                    type="password" autoComplete="current-password" required
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    suppressHydrationWarning
+                    className="w-full rounded-2xl border border-[#d6dce7] bg-[#f8fafc] py-3.5 pl-10 pr-4 text-sm text-[#172233] outline-none transition placeholder:text-[#b0bac9] focus:border-[#22000f]/40 focus:bg-white focus:shadow-[0_0_0_3px_rgba(34,0,15,0.06)]"
+                  />
+                </div>
+              </div>
+
+              {/* Forgot */}
+              <div className="flex justify-between text-xs">
+                <button type="button" onClick={handleForgotPassword}
+                  className="font-medium text-[#718093] transition hover:text-[#172233] hover:underline">
+                  Forgot password?
+                </button>
+                <span className="text-[#9ba6ba]">🔒 Protected session</span>
+              </div>
+
+              {/* Alert messages */}
               {(errorMessage || infoMessage) && (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
                   className={`rounded-2xl border px-4 py-3 text-sm ${
                     errorMessage
-                      ? "border-[#A50000]/60 bg-[#A50000]/10 text-[#FFD3CE]"
-                      : "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                      ? "border-[#ffcabf] bg-[#fff1ee] text-[#8c2e25]"
+                      : "border-[#cde9ce] bg-[#edf8ed] text-[#276334]"
                   }`}
                 >
                   {errorMessage || infoMessage}
-                </div>
+                </motion.div>
               )}
 
-              <Button type="submit" className="w-full py-3.5" disabled={isSubmitting}>
-                {isSubmitting
-                  ? mode === "login"
-                    ? "Authenticating..."
-                    : "Creating account..."
-                  : mode === "login"
-                    ? "Enter"
-                    : "Create account"}
-              </Button>
-            </form>
-            <div className="mt-6 flex flex-wrap gap-3 text-xs text-white/45">
-              {["Glassmorphism UI", "Realtime auth", "AI summaries", "Quiz-first workflow"].map(
-                (chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5"
-                  >
-                    {chip}
+              {/* Submit */}
+              <motion.button
+                type="submit"
+                disabled={isSubmitting}
+                whileHover={{ scale: 1.015, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                className="group relative w-full overflow-hidden rounded-2xl py-4 text-sm font-black text-[#22000f] transition-all disabled:cursor-wait disabled:opacity-60"
+                style={{
+                  background: "linear-gradient(135deg, #dfff57 0%, #c8e800 100%)",
+                  boxShadow: "0 8px 24px rgba(223,255,87,0.45), 0 2px 8px rgba(0,0,0,0.1)",
+                }}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Signing in…
                   </span>
-                )
-              )}
+                ) : (
+                  "Sign in →"
+                )}
+                {/* Shimmer sweep */}
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              </motion.button>
+            </form>
+
+            {/* Divider */}
+            <div className="mt-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-[#edf0f6]" />
+              <p className="text-xs text-[#b0bac9]">For LPU students only</p>
+              <div className="h-px flex-1 bg-[#edf0f6]" />
             </div>
+
+            {/* Footer trust badges */}
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-[#b0bac9]">
+              <span className="flex items-center gap-1">🔐 Firebase Auth</span>
+              <span>·</span>
+              <span className="flex items-center gap-1">☁️ Firestore</span>
+              <span>·</span>
+              <span className="flex items-center gap-1">🤖 Groq AI</span>
             </div>
-          </GlassPanel>
-        </motion.section>
+          </div>
+        </motion.div>
+
       </div>
     </main>
   );

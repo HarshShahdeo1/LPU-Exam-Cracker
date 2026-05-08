@@ -1,0 +1,44 @@
+name: First Time Server Setup
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  setup-ec2:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Run Initial Setup on EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          echo "Starting EC2 initialization..."
+          
+          # 1. Update the server
+          sudo apt update && sudo apt upgrade -y
+          
+          # 2. Install Node.js (Version 20)
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+          sudo apt install -y nodejs
+          
+          # 3. Install Git and PM2
+          sudo apt install -y git
+          sudo npm install -g pm2
+          
+          # 4. Clone your GitHub repository (if it doesn't exist)
+          if [ ! -d "lpu-exam-cracker" ]; then
+            git clone https://github.com/HarshShahdeo1/LPU-Exam-Cracker.git lpu-exam-cracker
+          fi
+          
+          # 5. Set up Environment Variables
+          cd lpu-exam-cracker
+          echo "Writing .env.local from GitHub Secrets..."
+          echo "${{ secrets.ENV_FILE }}" > .env.local
+          
+          # 6. Install project dependencies
+          npm ci
+          
+          echo "Server setup complete! Your environment is ready for the CI/CD pipeline."

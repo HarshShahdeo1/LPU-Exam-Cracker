@@ -1,139 +1,119 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireRequestUser } from "@/lib/auth";
-import { getOpenAIClient, getOpenAIModel, getAIProviderName } from "@/lib/openai";
+import { getChatAIClient, getChatAIModel, getChatAIProviderName } from "@/lib/openai";
 import { getUserReportChatContext } from "@/lib/reports";
-import { StudyReport } from "@/types/report";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_QUESTION_CHARS = 400;
+const MAX_SYLLABUS_CHARS = 12000;
 
-const SYSTEM_PROMPT = `You are "Ask Your Syllabus", an LPU exam-prep assistant.
-
-Use only the provided syllabus text and structured study report.
-Rules:
-- Answer clearly and concisely in an exam-oriented style.
-- If the question asks for a short-answer, 2-mark, or 5-mark prompt, generate it using only topics grounded in the supplied syllabus.
-- If the user asks which topic is most difficult or most important, make a reasonable inference from the syllabus and explicitly say it is an inference.
-- If the answer is not supported by the syllabus context, say that the syllabus does not provide enough detail.
-- Do not invent books, chapters, marks distribution, or facts that are not present in the context.`;
-
-function buildStudyOutline(report: StudyReport) {
-  return report.units
-    .map((unit) => {
-      return [
-        `Unit ${unit.unitNumber}: ${unit.unitTitle}`,
-        `Summary: ${unit.summary.join(" | ")}`,
-        `High-weightage: ${unit.highWeightageTopics.join(" | ")}`
-      ].join("\n");
-    })
-    .join("\n\n");
+export async function GET() {
+  return NextResponse.json({ provider: getChatAIProviderName() });
 }
+
+const SYSTEM_PROMPT =
+  "You are a versatile Academic Tutor. Your goal is to help students understand their subjects deeply. " +
+  "While you have the student's syllabus for context, you should NOT be limited by it. " +
+  "If a student asks a general question, provide a direct and comprehensive answer using your full expert knowledge. " +
+  "Do NOT start answers by saying 'the syllabus doesn't mention this' or 'this isn't in the text.' " +
+  "Instead, be a helpful teacher: explain the concept clearly first, and then optionally mention how it relates to their specific syllabus units or exam topics. " +
+  "Keep your tone encouraging, professional, and insightful. " +
+  "CRITICAL RULE: Keep your answers VERY CONCISE. Aim for 4 to 6 sentences maximum. " +
+  "Give the core answer quickly. If the topic is complex, give the summary and end by asking 'Would you like me to go deeper into this?' " +
+  "If the student just greets you (e.g., 'hi', 'hello'), respond with a short, friendly greeting and ask how you can help today—do NOT write a long paragraph.";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireRequestUser(request);
 
     if (!user) {
-      return NextResponse.json({ error: "You must be signed in to chat with a syllabus." }, { status: 401 });
+      return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => null)) as
-      | {
-          reportId?: string;
-          question?: string;
-          activeUnitNumber?: number;
-          activeUnitTitle?: string;
-        }
-      | null;
+    const body = (await request.json().catch(() => null)) as {
+      reportId?: string;
+      question?: string;
+      activeUnitNumber?: number;
+      activeUnitTitle?: string;
+      deepStudyContext?: string[];
+    } | null;
 
     const reportId = typeof body?.reportId === "string" ? body.reportId.trim() : "";
     const question = typeof body?.question === "string" ? body.question.trim() : "";
-    const activeUnitNumber =
-      typeof body?.activeUnitNumber === "number" ? body.activeUnitNumber : null;
-    const activeUnitTitle =
-      typeof body?.activeUnitTitle === "string" ? body.activeUnitTitle.trim() : "";
+    const unitNumber = body?.activeUnitNumber ?? null;
+    const unitTitle = body?.activeUnitTitle ?? "";
+    const subtopics = body?.deepStudyContext ?? [];
 
-    if (!reportId) {
-      return NextResponse.json({ error: "Missing report ID for syllabus chat." }, { status: 400 });
-    }
-
-    if (!question) {
-      return NextResponse.json({ error: "Ask a question about the syllabus first." }, { status: 400 });
-    }
-
-    if (question.length > MAX_QUESTION_CHARS) {
-      return NextResponse.json(
-        { error: `Keep the question under ${MAX_QUESTION_CHARS} characters.` },
-        { status: 413 }
-      );
+    if (!reportId || !question) {
+      return NextResponse.json({ error: "Missing reportId or question." }, { status: 400 });
     }
 
     const context = await getUserReportChatContext(user.uid, reportId);
 
     if (!context) {
-      return NextResponse.json({ error: "This syllabus report could not be found." }, { status: 404 });
+      return NextResponse.json({ error: "Report not found." }, { status: 404 });
     }
 
     if (!context.sourceText) {
       return NextResponse.json(
-        {
-          error:
-            "This report was created before full syllabus chat was enabled. Re-run the analysis to unlock Ask Your Syllabus."
-        },
+        { error: "Syllabus text not available for this report." },
         { status: 409 }
       );
     }
 
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: getOpenAIModel(),
-      temperature: 0.35,
+    const syllabusSlice = context.sourceText.slice(0, MAX_SYLLABUS_CHARS);
+    
+    // Format the UI context so the AI knows what the user is looking at
+    const uiContext = subtopics.length > 0 
+      ? `\nThe student is currently looking at these Deep Study subtopics on their screen:\n${subtopics.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n(If they refer to 'the first one' or 'number 2', they mean these topics).`
+      : "";
+
+    const completion = await getChatAIClient().chat.completions.create({
+      model: getChatAIModel(),
+      temperature: 0.7,
+      max_tokens: 300,
       messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT
-        },
+        { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
           content: `Course: ${context.report.courseTitle}
-File: ${context.fileName}
-Focused unit: ${
-            activeUnitNumber && activeUnitTitle
-              ? `Unit ${activeUnitNumber} - ${activeUnitTitle}`
-              : "None selected"
-          }
+Active Unit ${unitNumber}: ${unitTitle}
+${uiContext}
 
-Structured study outline:
-${buildStudyOutline(context.report)}
+Syllabus Context:
+${syllabusSlice}
 
-Syllabus text:
-${context.sourceText}
-
-User question:
+Student Question:
 ${question}`
         }
-      ]
-    });
+      ],
+      // NVIDIA deepseek models often need this extra_body parameter
+      extra_body: {
+        chat_template_kwargs: { thinking: false }
+      }
+    } as any);
 
     const answer = completion.choices[0]?.message?.content?.trim();
 
     if (!answer) {
       return NextResponse.json(
-        { error: `${getAIProviderName()} did not return a syllabus answer.` },
+        { error: `${getChatAIProviderName()} returned no answer.` },
         { status: 502 }
       );
     }
 
     return NextResponse.json({
       answer,
-      provider: getAIProviderName()
+      provider: getChatAIProviderName()
     });
   } catch (error) {
+    console.error("[syllabus-chat] Error:", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unexpected failure while answering the syllabus question."
+      { 
+        error: error instanceof Error ? error.message : "Unexpected error in syllabus chat.",
+        details: error instanceof Error ? (error as any).status : undefined
       },
       { status: 500 }
     );

@@ -6,12 +6,22 @@ export type QuizQuestion = {
   explanation: string;
 };
 
+export type SubTopic = {
+  title: string;
+  explanation: string;
+};
+
 export type StudyUnit = {
   unitNumber: number;
   unitTitle: string;
   summary: string[];
   highWeightageTopics: string[];
   mcqs: QuizQuestion[];
+  // Extended deep-study fields (populated by newer AI responses)
+  keyTerms?: Array<{ term: string; definition: string }>;
+  formulae?: Array<{ name: string; expression: string; note: string }>;
+  subtopics?: SubTopic[];
+  examTips?: string[];
 };
 
 export type StudyReport = {

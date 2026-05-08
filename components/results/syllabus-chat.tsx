@@ -18,6 +18,7 @@ type SyllabusChatProps = {
   activeUnitNumber: number;
   activeUnitTitle: string;
   hasSourceText: boolean;
+  deepStudyContext?: string[];
 };
 
 function createMessage(role: ChatMessage["role"], content: string): ChatMessage {
@@ -33,7 +34,8 @@ export function SyllabusChat({
   courseTitle,
   activeUnitNumber,
   activeUnitTitle,
-  hasSourceText
+  hasSourceText,
+  deepStudyContext
 }: SyllabusChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -57,6 +59,27 @@ export function SyllabusChat({
     ],
     [activeUnitNumber, activeUnitTitle]
   );
+
+  useEffect(() => {
+    async function fetchProvider() {
+      try {
+        const res = await fetch("/api/syllabus-chat");
+        const data = await res.json();
+        if (data.provider) setProviderName(data.provider);
+      } catch (err) {
+        console.error("Failed to fetch provider name", err);
+      }
+    }
+    fetchProvider();
+  }, []);
+
+  useEffect(() => {
+    function handleOpenChat() {
+      setIsOpen(true);
+    }
+    window.addEventListener("open-syllabus-chat", handleOpenChat);
+    return () => window.removeEventListener("open-syllabus-chat", handleOpenChat);
+  }, []);
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,7 +107,8 @@ export function SyllabusChat({
           reportId,
           question: trimmedQuestion,
           activeUnitNumber,
-          activeUnitTitle
+          activeUnitTitle,
+          deepStudyContext
         })
       });
 

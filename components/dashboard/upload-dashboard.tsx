@@ -6,25 +6,39 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { signOut } from "firebase/auth";
 
-import { Button } from "@/components/ui/button";
-import { GlassPanel } from "@/components/ui/glass-panel";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { firebaseAuth } from "@/lib/firebase-client";
+import { formatReportDate } from "@/lib/utils";
 
 type UploadDashboardProps = {
   userEmail: string | null;
   userName: string | null;
   showSystemHealthLink: boolean;
+  recentReports: Array<{
+    id: string;
+    fileName: string;
+    courseTitle: string;
+    createdAt: string | null;
+  }>;
 };
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unable to complete this action.";
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function UploadDashboard({
   userEmail,
   userName,
-  showSystemHealthLink
+  showSystemHealthLink,
+  recentReports
 }: UploadDashboardProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -34,6 +48,8 @@ export function UploadDashboard({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
+  const displayName = userName?.trim() || userEmail?.split("@")[0] || "Guest user";
+  const userInitial = displayName.charAt(0).toUpperCase();
 
   useEffect(() => {
     if (!isUploading) {
@@ -53,17 +69,6 @@ export function UploadDashboard({
       : progress < 75
         ? "Reading with the AI model..."
         : "Assembling study cards and quiz content...";
-  const quickStats = [
-    { label: "Status", value: "Ready" },
-    { label: "Storage", value: "Firestore" },
-    { label: "Flow", value: "PDF to Quiz" }
-  ];
-  const pipelineSteps = [
-    "Authenticate the user session",
-    "Extract readable syllabus text",
-    "Generate unit summaries and MCQs",
-    "Store the final report per user UID"
-  ];
 
   function chooseFile(file: File | null) {
     if (!file) {
@@ -136,211 +141,250 @@ export function UploadDashboard({
   }
 
   return (
-    <main className="hero-noise relative min-h-screen overflow-hidden px-6 py-8">
-      <div className="spotlight left-[-8rem] top-[-4rem] h-72 w-72 bg-[#7c1116]/28" />
-      <div className="spotlight right-[-8rem] top-24 h-80 w-80 bg-[#ef4335]/12" />
-      <div className="absolute inset-0 bg-grid opacity-15" />
-      <div className="absolute inset-0 bg-grid-fine opacity-10" />
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <header className="grid gap-6 rounded-[34px] border border-white/10 bg-white/[0.03] px-6 py-6 2xl:grid-cols-[1.15fr,0.85fr] 2xl:items-center">
-          <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.26em] text-white/45">Dashboard</p>
-            <h1 className="text-3xl font-semibold text-white md:text-4xl">
-              Welcome back{userName ? `, ${userName}` : ""}.
-            </h1>
-            <p className="max-w-2xl text-white/65">
-              Drop in an LPU syllabus PDF and the pipeline will extract units, ETE topics, and
-              practice MCQs into Firestore-backed study cards.
-            </p>
+    <main className="min-h-screen bg-[#f9fafb]">
+      <div className="mx-auto flex max-w-[1500px]">
+        <aside className="hidden min-h-screen w-[300px] shrink-0 border-r border-[#e8ebf2] bg-white px-6 py-8 xl:flex xl:flex-col">
+          <div className="flex items-center gap-4 rounded-[24px] border border-[#edf0f6] bg-white p-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#eef2ff] text-2xl font-semibold text-[#233142]">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-[#172233]">{displayName}</p>
+              <p className="truncate text-sm text-[#6c7688]">{userEmail ?? "Guest session"}</p>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {quickStats.map((stat) => (
-                <GlassPanel key={stat.label} className="min-w-0 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                    {stat.label}
-                  </p>
-                  <p className="mt-2 text-base font-semibold text-white">{stat.value}</p>
-                </GlassPanel>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
-                {userEmail ?? "Authenticated user"}
-              </span>
-              <div className="flex flex-wrap items-center gap-3">
-                {showSystemHealthLink && (
-                  <Link
-                    href="/system-health"
-                    className="inline-flex items-center justify-center rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-4 py-3 text-sm font-semibold text-[#ffe5de] transition duration-200 hover:-translate-y-0.5 hover:bg-[#ef4335]/16"
-                  >
-                    System Health
-                  </Link>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="mt-6 rounded-full bg-[#dfff57] px-6 py-3.5 text-sm font-semibold text-[#1f2a22] shadow-[0_14px_28px_rgba(177,204,57,0.24)] transition hover:-translate-y-0.5"
+          >
+            + New Upload
+          </button>
+
+          <div className="mt-8 space-y-2">
+            <Link href="/upload" className="sidebar-link sidebar-link-active">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#3d90ec]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M3 11.5L12 4l9 7.5" />
+                <path d="M6.5 10v9h11v-9" />
+              </svg>
+              <span className="text-base font-medium">Home</span>
+            </Link>
+            <Link href="/results" className="sidebar-link">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#8190a6]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M6 5h12" />
+                <path d="M6 10h12" />
+                <path d="M6 15h9" />
+                <path d="M6 19h7" />
+              </svg>
+              <span className="text-base font-medium">My library</span>
+            </Link>
+            <Link href="/results" className="sidebar-link">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#8190a6]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M5 6h14v10H8l-3 3V6Z" />
+              </svg>
+              <span className="text-base font-medium">AI notes</span>
+            </Link>
+          </div>
+
+          <div className="mt-auto" />
+        </aside>
+
+        <div className="min-w-0 flex-1 px-4 py-4 sm:px-6 lg:px-8">
+          <header className="play-nav sticky top-4 z-20 flex items-center justify-between rounded-[24px] px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#22000f] text-base font-semibold text-white">
+                L
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-[#172233]">LPU Exam Cracker</p>
+                {showSystemHealthLink ? (
+                  <Link href="/system-health" aria-label="System health" className="h-2.5 w-2.5 rounded-full bg-[#2fd400]" />
+                ) : (
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#b8c2d6]" />
                 )}
-                <Button variant="ghost" onClick={handleSignOut} disabled={isSigningOut}>
-                  {isSigningOut ? "Signing out..." : "Sign out"}
-                </Button>
               </div>
             </div>
-          </div>
-        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.45fr,0.85fr]">
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <GlassPanel
-              className={`relative min-h-[520px] overflow-hidden p-6 transition ${
-                isDragging ? "border-[#E14C3C]/60 bg-[#A50000]/10" : ""
-              }`}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+              className="rounded-full border border-[#d6dce7] bg-white px-5 py-2.5 text-sm font-semibold text-[#344255] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <div className="spotlight left-[-3rem] top-[-2rem] h-44 w-44 bg-[#ef4335]/14" />
-              <div className="scanlines absolute inset-0" />
-              <div className="relative flex h-full flex-col justify-between gap-6">
-                <div className="space-y-4">
-                  <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/60">
-                    PDF Drop Zone
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-semibold text-white md:text-4xl">
-                      Upload a syllabus
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-white/65">
-                      The server extracts text with <code>pdf-parse</code>, sends it to
-                      <code> the configured JSON model </code>, and saves the structured output to
-                      Firestore under <code>userReports</code>.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {["High-weightage topics", "ETE-focused summaries", "5 MCQs per unit"].map(
-                      (chip) => (
-                        <span
-                          key={chip}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/60"
-                        >
-                          {chip}
-                        </span>
-                      )
-                    )}
-                  </div>
+              {isSigningOut ? "Signing out..." : "Sign out"}
+            </button>
+          </header>
+
+          <section className="mt-6 rounded-[32px] border border-[#e8ebf2] bg-white px-6 py-7 sm:px-8">
+            <p className="text-lg font-semibold text-[#1f2a3b]">Hello, {displayName}.</p>
+            <h1 className="mt-2 text-3xl font-semibold text-[#172233] md:text-4xl">What are we studying today?</h1>
+          </section>
+
+          <section id="upload-board" className="mt-6 grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              className="play-card rounded-[36px] p-6"
+            >
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-[#718093]">PDF drop zone</p>
+                <h2 className="mt-3 text-3xl font-semibold text-[#172233]">Upload a syllabus PDF</h2>
+              </div>
+
+              <label
+                onDragEnter={() => setIsDragging(true)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  chooseFile(event.dataTransfer.files?.[0] ?? null);
+                }}
+                className={`mt-6 block cursor-pointer rounded-[32px] border-2 border-dashed px-8 py-16 text-center transition ${
+                  isDragging ? 'border-[#9ba6ba] bg-[#f3f5f8]' : 'border-[#d6dbe4] bg-[#f8fafc]'
+                }`}
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+                />
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[26px] bg-[#22000f] text-xl font-semibold text-white">
+                  PDF
                 </div>
+                <p className="mt-5 text-xl font-semibold text-[#172233]">
+                  Drop your LPU syllabus here or tap to browse
+                </p>
+                <p className="mt-3 text-base leading-8 text-[#5b6678]">
+                  Text-based PDFs up to 10 MB work best for fast parsing and clean AI output.
+                </p>
+                <div className="mt-5 rounded-[24px] border border-[#e1e6ef] bg-white px-4 py-3 text-sm text-[#516071]">
+                  {selectedFile
+                    ? `Selected: ${selectedFile.name} | ${formatFileSize(selectedFile.size)}`
+                    : 'No file selected yet. The workspace is ready when you are.'}
+                </div>
+              </label>
 
-                <label
-                  onDragEnter={() => setIsDragging(true)}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setIsDragging(false);
-                    chooseFile(event.dataTransfer.files?.[0] ?? null);
-                  }}
-                  className="surface-line flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-[30px] border border-dashed border-white/15 bg-[linear-gradient(180deg,rgba(0,0,0,0.28),rgba(255,255,255,0.02))] px-6 py-10 text-center transition hover:border-white/25 hover:bg-white/[0.03]"
-                >
-                  <input
-                    ref={inputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
-                  />
-                  <div className="space-y-4">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] border border-[#ef4335]/20 bg-[linear-gradient(145deg,rgba(239,67,53,0.16),rgba(255,255,255,0.03))] text-xl text-white shadow-[0_20px_60px_rgba(165,0,0,0.18)]">
-                      PDF
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xl font-medium text-white">
-                        Drop your LPU syllabus here or tap to browse.
-                      </p>
-                      <p className="text-sm leading-7 text-white/55">
-                        Supports text-based PDFs up to 10 MB for fast OpenAI analysis.
-                      </p>
-                    </div>
-                    {selectedFile && (
-                      <div className="rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-4 py-3 text-sm text-[#ffe8e1]">
-                        Selected: {selectedFile.name}
-                      </div>
-                    )}
+              <div className="mt-6 space-y-4">
+                {isUploading && <ProgressBar label={progressLabel} value={progress} />}
+                {errorMessage && (
+                  <div className="rounded-[24px] border border-[#ffcabf] bg-[#fff1ee] px-4 py-3 text-sm text-[#8c2e25]">
+                    {errorMessage}
                   </div>
-                </label>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="rounded-full border border-[#d4dae6] bg-white px-6 py-3 text-sm font-semibold text-[#344255] transition hover:-translate-y-0.5"
+                  >
+                    Browse PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={isUploading || !selectedFile}
+                    className="rounded-full bg-[#dfff57] px-6 py-3 text-sm font-semibold text-[#22000f] shadow-[0_18px_38px_rgba(177,204,57,0.28)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isUploading ? 'Analyzing...' : 'Analyze syllabus'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
 
-                <div className="space-y-4">
-                  {isUploading && <ProgressBar label={progressLabel} value={progress} />}
-                  {errorMessage && (
-                    <div className="rounded-2xl border border-[#A50000]/50 bg-[#A50000]/10 px-4 py-3 text-sm text-[#FFD3CE]">
-                      {errorMessage}
+            <div className="space-y-6">
+              <div className="play-card rounded-[32px] p-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm uppercase tracking-[0.26em] text-[#718093]">Recent uploads</p>
+                  <button type="button" className="rounded-full border border-[#d7dde8] px-2.5 py-1 text-xs text-[#6d788b]">i</button>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {selectedFile ? (
+                    <div className="play-card-soft rounded-[20px] p-4">
+                      <p className="text-sm font-semibold text-[#1e2b3c]">{selectedFile.name}</p>
+                      <p className="mt-1 text-xs text-[#748197]">Just selected • {formatFileSize(selectedFile.size)}</p>
+                    </div>
+                  ) : (
+                    <div className="play-card-soft rounded-[20px] p-4 text-sm text-[#5b6678]">
+                      No uploads in this session yet.
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={() => inputRef.current?.click()} variant="ghost">
-                      Browse PDF
-                    </Button>
-                    <Button onClick={handleAnalyze} disabled={isUploading || !selectedFile}>
-                      {isUploading ? "Analyzing..." : "Analyze syllabus"}
-                    </Button>
-                  </div>
+                  {recentReports.length ? (
+                    recentReports.map((report) => (
+                      <Link
+                        key={report.id}
+                        href={`/results?reportId=${report.id}`}
+                        className="play-card-soft block rounded-[20px] p-4 transition hover:-translate-y-0.5"
+                      >
+                        <p className="text-sm font-semibold text-[#1e2b3c]">{report.fileName}</p>
+                        <p className="mt-1 text-xs text-[#748197]">
+                          {report.courseTitle} • {formatReportDate(report.createdAt)}
+                        </p>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="play-card-soft rounded-[20px] p-4 text-sm text-[#5b6678]">
+                      Recent analyzed PDFs will appear here.
+                    </div>
+                  )}
                 </div>
               </div>
-            </GlassPanel>
-          </motion.section>
 
-          <motion.aside
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="space-y-6"
-          >
-            <GlassPanel className="p-6">
-              <p className="text-sm uppercase tracking-[0.26em] text-white/45">Pipeline</p>
-              <div className="mt-4 space-y-3">
-                {pipelineSteps.map((step, index) => (
-                  <div
-                    key={step}
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-white/70"
-                  >
-                    <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#ef4335]/20 bg-[#ef4335]/10 text-[11px] font-medium text-[#ffd7cb]">
-                      0{index + 1}
-                    </span>
-                    {step}
-                  </div>
-                ))}
-              </div>
-            </GlassPanel>
-
-            <GlassPanel className="p-6">
-              <p className="text-sm uppercase tracking-[0.26em] text-white/45">Shortcut</p>
-              <div className="mt-4 space-y-4 text-white/70">
-                <p>
-                  Already analyzed something in this account? Jump straight to the latest result.
+              <div className="play-card rounded-[32px] p-6">
+                <p className="text-sm uppercase tracking-[0.26em] text-[#718093]">Need help?</p>
+                <p className="mt-3 text-sm leading-7 text-[#5b6678]">
+                  Open your latest report or check system details when needed.
                 </p>
-                <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(239,67,53,0.12),rgba(12,14,20,0.62))] p-4 text-sm leading-7 text-white/65">
-                  Each report is shaped into study cards, topic tags, and answerable quiz prompts so
-                  the output feels exam-oriented, not just summarized.
-                </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="mt-5 flex flex-wrap gap-3">
                   <Link
                     href="/results"
-                    className="inline-flex rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium transition hover:-translate-y-0.5 hover:bg-white/10"
+                    className="rounded-full border border-[#d4dae6] bg-white px-5 py-3 text-sm font-semibold text-[#344255] transition hover:-translate-y-0.5"
                   >
                     Open latest report
                   </Link>
                   {showSystemHealthLink && (
                     <Link
                       href="/system-health"
-                      className="inline-flex rounded-2xl border border-[#ef4335]/20 bg-[#ef4335]/10 px-4 py-3 text-sm font-medium text-[#ffe5de] transition hover:-translate-y-0.5 hover:bg-[#ef4335]/16"
+                      className="rounded-full bg-[#22000f] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5"
                     >
-                      Open SRE dashboard
+                      System status
                     </Link>
                   )}
                 </div>
               </div>
-            </GlassPanel>
-          </motion.aside>
+            </div>
+          </section>
+
+          <section className="mt-8 grid gap-6 lg:grid-cols-3">
+            <div className="play-card rounded-[30px] p-6">
+              <p className="text-sm uppercase tracking-[0.24em] text-[#718093]">Your library</p>
+              <h3 className="mt-3 text-2xl font-semibold text-[#172233]">Saved Reports</h3>
+              <p className="mt-3 text-base leading-8 text-[#5b6678]">Open previous syllabus analyses and continue revision.</p>
+            </div>
+
+            <div className="play-card rounded-[30px] p-6">
+              <p className="text-sm uppercase tracking-[0.24em] text-[#718093]">Recent quiz</p>
+              <h3 className="mt-3 text-2xl font-semibold text-[#172233]">Practice Snapshot</h3>
+              <p className="mt-3 text-base leading-8 text-[#5b6678]">Jump back into the latest MCQ set and keep your streak going.</p>
+            </div>
+
+            <div className="play-card rounded-[30px] p-6">
+              <p className="text-sm uppercase tracking-[0.24em] text-[#718093]">AI notes</p>
+              <h3 className="mt-3 text-2xl font-semibold text-[#172233]">Quick Summaries</h3>
+              <p className="mt-3 text-base leading-8 text-[#5b6678]">Review generated unit summaries without reopening the full report.</p>
+            </div>
+          </section>
+
+          <footer className="pb-5 pt-8 text-center text-xs text-[#99a3b5]">
+            Status: {selectedFile ? "Ready" : "Waiting for upload"} • Engine: {isUploading ? "Analyzing" : "Idle"} • Storage: Firestore
+          </footer>
         </div>
       </div>
     </main>
