@@ -15,22 +15,26 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
           echo "Starting EC2 initialization..."
           
-          # 1. Update the server
-          sudo apt update && sudo apt upgrade -y
+          # 1. Update the server (Non-interactive)
+          sudo apt-get update -yq
+          sudo apt-get upgrade -yq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
           
           # 2. Install Node.js (Version 20)
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt install -y nodejs
+          sudo apt-get install -yq nodejs
           
           # 3. Install Git and PM2
-          sudo apt install -y git
+          # 3. Install Git and PM2
+          sudo apt-get install -yq git
           sudo npm install -g pm2
           
-          # 4. Clone your GitHub repository (if it doesn't exist)
+          # 4. Clone your GitHub repository (Handles private repos automatically)
           if [ ! -d "lpu-exam-cracker" ]; then
-            git clone https://github.com/HarshShahdeo1/LPU-Exam-Cracker.git lpu-exam-cracker
+            git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git lpu-exam-cracker
           fi
           
           # 5. Set up Environment Variables

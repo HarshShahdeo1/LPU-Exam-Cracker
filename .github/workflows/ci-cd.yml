@@ -52,6 +52,9 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          set -e
+          export PATH=$PATH:/usr/bin:/usr/local/bin
+          
           # Assuming the project is cloned in a directory named 'lpu-exam-cracker' in the home folder
           cd ~/lpu-exam-cracker
           
