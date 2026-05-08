@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { formatReportDate } from "@/lib/utils";
-import { StoredUserReport, StudyUnit } from "@/types/report";
+import { StoredUserReport, StudyUnit, QuizQuestion } from "@/types/report";
 import { SyllabusChat } from "./syllabus-chat";
 
 /* ─── Types ──────────────────────────────────────────────── */
@@ -24,7 +24,7 @@ type UnitDetail = {
   keyTerms:   Array<{ term: string; definition: string }>;
   formulae:   Array<{ name: string; expression: string; note: string }>;
   examTips:   string[];
-  mcqs:       Array<{ question: string; options: string[]; correctAnswerIndex: number; explanation?: string }>;
+  mcqs:       QuizQuestion[];
 };
 
 const TAB_CONFIG: Array<{ id: Tab; label: string; icon: string; always?: boolean }> = [
