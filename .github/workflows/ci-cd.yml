@@ -55,7 +55,19 @@ jobs:
           set -e
           export PATH=$PATH:/usr/bin:/usr/local/bin
           
-          # Assuming the project is cloned in a directory named 'lpu-exam-cracker' in the home folder
+          # ── Create swap space to prevent OOM kills on t2.micro (1GB RAM) ──
+          if [ ! -f /swapfile ]; then
+            sudo fallocate -l 2G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile
+            echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            echo "✅ 2GB swap file created"
+          else
+            echo "✅ Swap file already exists, skipping"
+          fi
+          
+          # Navigate to project directory
           cd ~/lpu-exam-cracker
           
           # Pull the latest code from GitHub
@@ -64,12 +76,11 @@ jobs:
           # Inject Environment Variables from GitHub Secrets
           echo "${{ secrets.ENV_FILE }}" > .env.local
           
-          # Install dependencies
-          npm ci
+          # Install dependencies (memory-efficient flags)
+          npm install --prefer-offline --no-audit --no-fund
           
-          # Build the Next.js application
-          npm run build
+          # Build the Next.js application (limit Node.js heap to 512MB)
+          NODE_OPTIONS="--max-old-space-size=512" npm run build
           
-          # Restart the application using PM2 (a popular process manager for Node.js)
-          # Make sure PM2 is installed on your EC2 instance globally: npm install -g pm2
+          # Restart the application using PM2
           pm2 restart lpu-exam-cracker || pm2 start npm --name "lpu-exam-cracker" -- start
