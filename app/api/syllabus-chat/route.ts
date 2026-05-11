@@ -88,13 +88,8 @@ ${syllabusSlice}
 Student Question:
 ${question}`
         }
-      ],
-      // NVIDIA deepseek models often need this extra_body parameter
-      extra_body: {
-        chat_template_kwargs: { thinking: false }
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
+
 
     const answer = completion.choices[0]?.message?.content?.trim();
 
