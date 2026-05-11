@@ -1,0 +1,28 @@
+{
+  "files.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.dev-server.out.log": true,
+    "**/.dev-server.err.log": true,
+    "**/tsconfig.tsbuildinfo": true,
+    "**/next-env.d.ts": true,
+    "**/package-lock.json": true,
+    "**/scratch": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, .eslintrc.json, postcss.config.js, tailwind.config.ts, tsconfig.json, next.config.*",
+    ".env.example": ".env.local, .env, .env.*",
+    "Dockerfile": "docker-compose.yml, .dockerignore",
+    "README.md": "Project Synopsis.pdf"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
