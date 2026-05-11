@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       maxAge: expiresIn / 1000,
       path: "/",
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production"
+      secure: process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https") ?? false
     });
 
     return response;
