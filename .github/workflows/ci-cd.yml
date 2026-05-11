@@ -73,8 +73,8 @@ jobs:
           # Pull the latest code from GitHub
           git pull origin main
           
-          # Inject Environment Variables safely (printf handles special chars better than echo)
-          printf '%s' "${{ secrets.ENV_FILE }}" > .env.local
+          # Inject Environment Variables (base64 decode to handle all special characters)
+          echo "${{ secrets.ENV_FILE }}" | base64 -d > .env.local
           
           # Install dependencies (memory-efficient flags)
           npm install --prefer-offline --no-audit --no-fund
