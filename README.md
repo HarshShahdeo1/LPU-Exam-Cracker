@@ -1,112 +1,166 @@
-# LPU Exam Cracker v2
+# 🎓 LPU Exam Cracker — AI-Powered Syllabus Study Platform
 
-Production-ready Next.js 15 application that accepts LPU syllabus PDFs, extracts text server-side with `pdf-parse`, analyzes the syllabus with an OpenAI-compatible model, and stores structured study reports in Firebase Firestore. The app ships with Docker and local `docker-compose` support so it can be promoted to AWS App Runner through ECR.
+> Upload your LPU syllabus PDF and instantly get AI-generated unit summaries, key terms, exam tips, 5 MCQs per unit, deep study cards, and an interactive chatbot — all powered by Groq + NVIDIA AI.
 
-## Stack
+**Live Demo:** [http://lpu-exam-cracker.duckdns.org](http://lpu-exam-cracker.duckdns.org)
 
-- Next.js 15 App Router with TypeScript
-- Tailwind CSS with Framer Motion for glassmorphism UI
-- Firebase Authentication for public signup, sign-in, and password reset
-- Firebase Admin SDK for secure session verification and Firestore writes
-- OpenAI-compatible LLM in JSON mode
-- Docker multi-stage build on `node:20-alpine`
+---
 
-## Features
+## ✨ Features
 
-- Figma-inspired dark landing page with LPU Crimson accents
-- Protected `/upload` and `/results` routes via `middleware.ts`
-- Firebase email/password signup and login with `sendPasswordResetEmail`
-- PDF upload dashboard with animated progress feedback
-- `/api/analyze` pipeline that parses the PDF, calls OpenAI, normalizes the JSON response, and stores it in Firestore `userReports`
-- Results screen with study cards and per-unit practice quiz sections
-- Multi-syllabus library sidebar so users can reopen any saved report from Firestore
-- "Ask Your Syllabus" chat bubble on the results page for follow-up questions grounded in the parsed PDF
-- Hidden `/system-health` dashboard with Grafana-style latency and reliability metrics backed by Firestore telemetry
+| Feature | Description |
+|---------|-------------|
+| 📄 **PDF Analysis** | Upload any LPU syllabus PDF — AI extracts and analyzes all units |
+| 📚 **Unit Summaries** | Auto-generated summaries, key terms, and exam tips per unit |
+| 🧠 **MCQ Practice** | 5 AI-generated MCQs per unit with instant scoring |
+| 🔬 **Deep Study Cards** | On-demand subtopics, formulae, and exam strategies |
+| 💬 **AI Chatbot** | Ask anything about your syllabus — powered by NVIDIA Llama |
+| 📊 **Multi-Syllabus Library** | Save and revisit all past reports from the dashboard |
+| 🔒 **Secure Auth** | Firebase email/password login + self-registration |
+| 📈 **System Health** | Hidden admin dashboard with latency & reliability metrics |
 
-## Environment Variables
+---
 
-Copy `.env.example` to `.env.local` and fill in every value:
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | Next.js 15 (App Router) + TypeScript |
+| **Styling** | Tailwind CSS + Framer Motion |
+| **AI — Analysis** | Groq API (`llama-3.3-70b-versatile`) |
+| **AI — Chatbot** | NVIDIA API (`meta/llama-3.1-8b-instruct`) |
+| **Auth** | Firebase Authentication (Email/Password) |
+| **Database** | Firebase Firestore |
+| **PDF Parsing** | `pdf-parse` (server-side) |
+| **Deployment** | AWS EC2 (`t2.micro`) + PM2 + Nginx |
+| **CI/CD** | GitHub Actions (auto-deploy on push to `main`) |
+| **Domain** | DuckDNS (free dynamic DNS) + AWS Elastic IP |
+
+---
+
+## 📁 Project Structure
+
+```
+├── app/
+│   ├── api/
+│   │   ├── analyze/          # PDF → AI analysis pipeline
+│   │   ├── auth/session/     # Firebase session cookie management
+│   │   ├── syllabus-chat/    # AI chatbot endpoint
+│   │   └── unit-detail/      # Deep study card generator
+│   ├── results/              # Study results page
+│   ├── system-health/        # Admin metrics dashboard
+│   ├── upload/               # Syllabus upload dashboard
+│   └── page.tsx              # Login / landing page
+├── components/
+│   ├── auth/                 # Login, signup, hero panel
+│   ├── dashboard/            # Upload UI, report library
+│   ├── results/              # Study cards, quiz, chatbot
+│   ├── system-health/        # Admin charts
+│   └── ui/                   # Shared UI components
+├── lib/
+│   ├── auth.ts               # Session helpers
+│   ├── env.ts                # Firebase service account parser
+│   ├── firebase-admin.ts     # Firebase Admin SDK
+│   ├── firebase-client.ts    # Firebase client SDK
+│   ├── openai.ts             # Groq + NVIDIA client factories
+│   └── reports.ts            # Firestore report helpers
+├── types/
+│   ├── report.ts             # Shared TypeScript types
+│   └── system-health.ts      # Telemetry types
+├── .github/workflows/
+│   ├── ci-cd.yml             # Auto-deploy pipeline
+│   └── setup-ec2.yml         # One-click server initialization
+└── public/                   # Static assets
+```
+
+---
+
+## ⚙️ Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in all values:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Required values:
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | Groq API key (used for syllabus analysis) |
+| `OPENAI_BASE_URL` | `https://api.groq.com/openai/v1` |
+| `OPENAI_MODEL` | `llama-3.3-70b-versatile` |
+| `NVIDIA_API_KEY` | NVIDIA API key (used for chatbot) |
+| `NVIDIA_MODEL` | `meta/llama-3.1-8b-instruct` |
+| `ADMIN_EMAILS` | Comma-separated emails for `/system-health` access |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | Firebase service account JSON (minified, single line) |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web app config |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase web app config |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase web app config |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase web app config |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase web app config |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase web app config |
 
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL` optional, defaults to OpenAI and can point to Groq's OpenAI-compatible endpoint
-- `OPENAI_MODEL` optional, defaults to `gpt-4o-mini`
-- `ADMIN_EMAILS` optional, comma-separated allowlist for `/system-health`
-- `FIREBASE_SERVICE_ACCOUNT_KEY`
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
+---
 
-## Firebase Setup
-
-1. Create a Firebase project.
-2. Enable Email/Password authentication in Firebase Authentication.
-3. Generate a service account key and place its JSON contents into `FIREBASE_SERVICE_ACCOUNT_KEY`.
-4. Create a Firestore database.
-5. Create users in Firebase Auth or add a signup flow later.
-
-## Local Development
+## 🚀 Local Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Local Docker Run
+---
 
-```bash
-docker compose up --build
-```
+## ☁️ Production Deployment (AWS EC2)
 
-The Docker build uses Next.js standalone output so the final image contains only the compiled runtime and static assets.
+This project uses **GitHub Actions** for fully automated CI/CD.
 
-## AWS ECR + App Runner
+### First-Time Server Setup
+1. Launch an AWS EC2 `t2.micro` instance (Ubuntu 24.04 LTS)
+2. Add your secrets to GitHub → **Settings → Secrets → Actions**:
+   - `EC2_HOST` — your server's Elastic IP
+   - `EC2_USERNAME` — `ubuntu`
+   - `EC2_SSH_KEY` — contents of your `.pem` key file
+3. Go to **GitHub Actions** → run **"First Time Server Setup"** workflow
+4. SSH into the server and create `.env.local` manually:
+   ```bash
+   nano ~/lpu-exam-cracker/.env.local
+   # Paste your environment variables, save with Ctrl+X → Y → Enter
+   pm2 restart lpu-exam-cracker
+   ```
 
-1. Create an ECR repository:
+### Ongoing Deployments
+Push to `main` → GitHub Actions automatically:
+- Builds and lints the code
+- SSHs into the server
+- Pulls latest code
+- Rebuilds the app
+- Restarts via PM2
 
-```bash
-aws ecr create-repository --repository-name lpu-exam-cracker-v2
-```
+### Disaster Recovery (if EC2 is terminated)
+1. Launch a new EC2 instance
+2. Update `EC2_HOST` secret in GitHub with the new Elastic IP
+3. Re-run **"First Time Server Setup"** workflow
+4. Re-create `.env.local` on the new server
 
-2. Authenticate Docker with ECR:
+---
 
-```bash
-aws ecr get-login-password --region <aws-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<aws-region>.amazonaws.com
-```
+## 🔥 Firebase Setup
 
-3. Build and tag the image:
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable **Email/Password** authentication
+3. Add your domain to **Authorized Domains** (Authentication → Settings)
+4. Generate a **Service Account Key** (Project Settings → Service Accounts)
+5. Minify the JSON key to a single line and set as `FIREBASE_SERVICE_ACCOUNT_KEY`
+6. Create a **Firestore database** in production mode
 
-```bash
-docker build -t lpu-exam-cracker-v2 .
-docker tag lpu-exam-cracker-v2:latest <account-id>.dkr.ecr.<aws-region>.amazonaws.com/lpu-exam-cracker-v2:latest
-```
+---
 
-4. Push the image:
+## 📝 Notes
 
-```bash
-docker push <account-id>.dkr.ecr.<aws-region>.amazonaws.com/lpu-exam-cracker-v2:latest
-```
-
-5. In AWS App Runner:
-   - create a service from the ECR image
-   - expose port `3000`
-   - set the same environment variables from `.env.local`
-   - enable automatic deployments if desired
-
-## Important Notes
-
-- The middleware checks for a Firebase-backed session cookie. Server pages and API routes verify the cookie before reading or writing user data.
-- The OpenAI prompt truncates very large PDFs to keep token usage predictable.
-- `userReports` documents are stored with `uid`, `fileName`, `createdAt`, `sourceExcerpt`, `sourceLength`, and `report`.
-- Newly created `userReports` documents also retain the parsed `sourceText` so the results page can power "Ask Your Syllabus" follow-up chat.
-- `analysisEvents` documents track status, latency, and failure-stage telemetry for the hidden `/system-health` page.
+- The `FIREBASE_SERVICE_ACCOUNT_KEY` must be **minified JSON on a single line** in `.env.local`
+- PDF text is truncated to 12,000 characters to keep AI token usage predictable
+- The chatbot uses NVIDIA (separate token budget from Groq analysis)
+- Session cookies use `httpOnly` and are tied to Firebase Admin verified tokens
+- `/system-health` is only accessible to emails listed in `ADMIN_EMAILS`

@@ -12,3 +12,5 @@ yarn-error.log*
 pnpm-debug.log*
 .dev-server.out.log
 .dev-server.err.log
+scratch/
+tsconfig.tsbuildinfo
