@@ -73,9 +73,7 @@ jobs:
           # Pull the latest code from GitHub
           git pull origin main
           
-          # Inject Environment Variables (strip Windows line endings, then base64 decode)
-          echo "${{ secrets.ENV_FILE }}" | tr -d '\r' | base64 -d > .env.local
-          
+
           # Install dependencies (memory-efficient flags)
           npm install --prefer-offline --no-audit --no-fund
           
