@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { startTransition, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 
 import { AuthHeroPanel } from "@/components/auth/auth-hero-panel";
 import { ConfettiCanvas } from "@/components/auth/confetti-canvas";
@@ -45,6 +45,13 @@ export function AuthLanding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [infoMessage,  setInfoMessage]  = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [mode,         setMode]         = useState<"login" | "signup">("login");
+
+  function switchMode(newMode: "login" | "signup") {
+    setMode(newMode);
+    setErrorMessage("");
+    setInfoMessage("");
+  }
 
   async function createServerSession(idToken: string) {
     const res = await fetch("/api/auth/session", {
@@ -55,6 +62,23 @@ export function AuthLanding() {
     if (!res.ok) {
       const payload = (await res.json().catch(() => null)) as { error?: string } | null;
       throw new Error(payload?.error ?? "Unable to create a server session.");
+    }
+  }
+
+  async function handleSignUp(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setInfoMessage("");
+    try {
+      const cred    = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      const idToken = await cred.user.getIdToken();
+      await createServerSession(idToken);
+      startTransition(() => { router.push("/upload"); router.refresh(); });
+    } catch (err) {
+      setErrorMessage(getErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -157,11 +181,37 @@ export function AuthLanding() {
                 ))}
               </div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#718093]">Secure access</p>
-              <h2 className="mt-2 text-3xl font-black text-[#172233]">Welcome back 👋</h2>
-              <p className="mt-1.5 text-sm text-[#718093]">Sign in to start your AI revision session</p>
+              <h2 className="mt-2 text-3xl font-black text-[#172233]">
+                {mode === "login" ? "Welcome back 👋" : "Join LPU Cracker 🚀"}
+              </h2>
+              <p className="mt-1.5 text-sm text-[#718093]">
+                {mode === "login" ? "Sign in to start your AI revision session" : "Create your free account to get started"}
+              </p>
+
+              {/* Tab switcher */}
+              <div className="mt-5 flex rounded-2xl border border-[#e2e6ec] bg-[#f8fafc] p-1">
+                <button type="button"
+                  onClick={() => switchMode("login")}
+                  className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
+                    mode === "login"
+                      ? "bg-[#22000f] text-white shadow"
+                      : "text-[#718093] hover:text-[#172233]"
+                  }`}>
+                  Sign In
+                </button>
+                <button type="button"
+                  onClick={() => switchMode("signup")}
+                  className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
+                    mode === "signup"
+                      ? "bg-[#22000f] text-white shadow"
+                      : "text-[#718093] hover:text-[#172233]"
+                  }`}>
+                  Create Account
+                </button>
+              </div>
             </div>
 
-            <form className="space-y-4" onSubmit={handleLogin}>
+            <form className="space-y-4" onSubmit={mode === "login" ? handleLogin : handleSignUp}>
 
               {/* Email */}
               <div>
@@ -240,10 +290,10 @@ export function AuthLanding() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Signing in…
+                    {mode === "login" ? "Signing in…" : "Creating account…"}
                   </span>
                 ) : (
-                  "Sign in →"
+                  mode === "login" ? "Sign in →" : "Create Account →"
                 )}
                 {/* Shimmer sweep */}
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
