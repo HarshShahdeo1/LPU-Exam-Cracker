@@ -88,7 +88,9 @@ ${syllabusSlice}
 Student Question:
 ${question}`
         }
+      ],
     });
+
 
 
     const answer = completion.choices[0]?.message?.content?.trim();
