@@ -14,7 +14,7 @@ export async function POST() {
     maxAge: 0,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https") ?? false
   });
 
   return response;
