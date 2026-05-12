@@ -140,6 +140,19 @@ export function UploadDashboard({
     }
   }
 
+  async function handleTrySample() {
+    try {
+      setErrorMessage("");
+      const res = await fetch("/sample-syllabus.pdf");
+      if (!res.ok) throw new Error("Could not fetch sample syllabus. Make sure it exists in the public folder.");
+      const blob = await res.blob();
+      const file = new File([blob], "Sample_Syllabus_AI_INT246.pdf", { type: "application/pdf" });
+      chooseFile(file);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f9fafb]">
       <div className="mx-auto flex max-w-[1500px]">
@@ -294,6 +307,14 @@ export function UploadDashboard({
                     className="rounded-full bg-[#dfff57] px-6 py-3 text-sm font-semibold text-[#22000f] shadow-[0_18px_38px_rgba(177,204,57,0.28)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isUploading ? 'Analyzing...' : 'Analyze syllabus'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTrySample}
+                    disabled={isUploading}
+                    className="rounded-full border border-[#e1e6ef] bg-[#f8fafc] px-6 py-3 text-sm font-semibold text-[#718093] transition hover:bg-[#eef2ff] hover:text-[#3d90ec] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Try Demo Syllabus
                   </button>
                 </div>
               </div>
