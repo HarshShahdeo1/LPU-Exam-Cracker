@@ -137,20 +137,20 @@ LPU Exam Cracker solves these problems through an end-to-end AI pipeline:
 
 ---
 
-## 8. CI/CD Pipeline
-
 ```
 Developer pushes code to GitHub (main branch)
         │
-        ▼
-┌──────────────────────────────────────┐
-│   GitHub Actions: build-and-lint     │
-│   • Install dependencies             │
-│   • Run ESLint                       │
-│   • Build Next.js production bundle  │
-└──────────────────┬───────────────────┘
-                   │ (on success)
-                   ▼
+        ├──────────────────────────────────────┐
+        ▼                                      ▼
+┌──────────────────────────────────┐  ┌──────────────────────────────────┐
+│  GitHub Actions: security-scan   │  │  GitHub Actions: build-and-lint  │
+│  • Gitleaks (secret scanning)    │  │  • Install dependencies          │
+│  • npm audit (CVE scanning)      │  │  • Run ESLint                    │
+│                                  │  │  • Build Next.js production      │
+└──────────────┬───────────────────┘  └──────────────┬───────────────────┘
+               │ (both must pass)                    │
+               └──────────────┬──────────────────────┘
+                              ▼
 ┌──────────────────────────────────────┐
 │   GitHub Actions: deploy-to-ec2      │
 │   • SSH into AWS EC2 server          │
@@ -165,12 +165,22 @@ Developer pushes code to GitHub (main branch)
 
 ## 9. Security Implementation
 
-- **Session Cookies:** Server-side `httpOnly` cookies verified via Firebase Admin SDK
-- **Route Protection:** Next.js middleware checks session on every protected route
-- **API Security:** All API routes verify the session cookie before processing
-- **Environment Secrets:** API keys stored in GitHub Secrets, never in the codebase
-- **Firebase Rules:** Firestore access restricted to authenticated users only
-- **Admin Access:** `/system-health` restricted to whitelisted emails via `ADMIN_EMAILS`
+### CI/CD Security (Automated)
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Secret Scanning** | Gitleaks | Scans every commit for leaked API keys, passwords, tokens — blocks pipeline if found |
+| **Dependency Scanning** | npm audit | Detects known CVE vulnerabilities in npm packages |
+| **Deploy Gate** | GitHub Actions | Deployment blocked unless both security-scan AND build-and-lint pass |
+
+### Application Security
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Security Headers** | Next.js config (`next.config.js`) | Protects against XSS (`X-XSS-Protection`), clickjacking (`X-Frame-Options: DENY`), MIME sniffing (`X-Content-Type-Options: nosniff`), and browser tracking (`Permissions-Policy`) |
+| **Session Cookies** | Firebase Admin SDK | Server-side `httpOnly` cookies verified on every request |
+| **Route Protection** | Next.js middleware | Checks session cookie on every protected route, redirects unauthenticated users |
+| **API Security** | Session verification | All API routes verify the session cookie before processing |
+| **Environment Secrets** | GitHub Secrets | API keys stored securely in GitHub, never committed to the codebase |
+| **Admin Access Control** | `ADMIN_EMAILS` env variable | `/system-health` dashboard restricted to whitelisted emails |
 
 ---
 

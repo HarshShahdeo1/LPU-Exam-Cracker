@@ -132,11 +132,16 @@ This project uses **GitHub Actions** for fully automated CI/CD.
 
 ### Ongoing Deployments
 Push to `main` → GitHub Actions automatically:
-- Builds and lints the code
-- SSHs into the server
-- Pulls latest code
-- Rebuilds the app
-- Restarts via PM2
+
+```
+git push → [🔐 Security Scan] ──┐
+           (Gitleaks + npm audit) │
+                                  ├──→ [🚀 Deploy to EC2]
+           [🔨 Build & Lint]  ───┘
+           (ESLint + Next.js build)
+```
+
+Both jobs must pass before deployment proceeds.
 
 ### Disaster Recovery (if EC2 is terminated)
 1. Launch a new EC2 instance
@@ -154,6 +159,20 @@ Push to `main` → GitHub Actions automatically:
 4. Generate a **Service Account Key** (Project Settings → Service Accounts)
 5. Minify the JSON key to a single line and set as `FIREBASE_SERVICE_ACCOUNT_KEY`
 6. Create a **Firestore database** in production mode
+
+---
+
+## 🛡️ Security
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Secret Scanning** | Gitleaks (CI) | Blocks commits containing API keys, tokens, or passwords |
+| **Dependency Scanning** | npm audit (CI) | Detects known CVE vulnerabilities in npm packages |
+| **Security Headers** | Next.js config | Protects against XSS, clickjacking, MIME sniffing |
+| **Session Security** | Firebase Admin SDK | `httpOnly` cookies verified server-side on every request |
+| **Route Protection** | Next.js middleware | Redirects unauthenticated users from protected pages |
+| **Admin Access Control** | `ADMIN_EMAILS` env | `/system-health` restricted to whitelisted emails |
+| **Deploy Gate** | GitHub Actions | Deployment blocked unless security-scan AND build both pass |
 
 ---
 
