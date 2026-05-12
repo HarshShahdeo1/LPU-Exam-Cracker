@@ -7,6 +7,33 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # ── Security Scanning ─────────────────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # Full history for Gitleaks
+
+    - name: 🔐 Gitleaks — Secret Scanning
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: 🛡️ npm audit — Dependency Vulnerability Scan
+      run: npm audit --audit-level=high || true
+
+  # ── Build & Lint ───────────────────────────────────────────────────────
   build-and-lint:
     runs-on: ubuntu-latest
 
@@ -26,6 +53,7 @@ jobs:
     - name: Run Linter
       run: npm run lint
 
+
     - name: Build Next.js app
       # Environment variables needed for build (add placeholders or secrets if they are required at build time)
       env:
@@ -41,7 +69,7 @@ jobs:
   deploy-to-ec2:
     # Only run deployment on pushes to the main branch, not on PRs
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build-and-lint
+    needs: [build-and-lint, security-scan]
     runs-on: ubuntu-latest
 
     steps:
