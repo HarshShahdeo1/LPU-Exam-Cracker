@@ -155,7 +155,7 @@ export function SyllabusChat({
             className="pointer-events-auto w-full"
           >
             <GlassPanel className="overflow-hidden p-0">
-              <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(239,67,53,0.16),rgba(255,255,255,0.02))] px-5 py-4">
+              <div className="border-b border-white/10 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(255,255,255,0.02))] px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-white/45">
@@ -198,7 +198,7 @@ export function SyllabusChat({
                       className={`max-w-[92%] rounded-[22px] px-4 py-3 text-sm leading-7 ${
                         message.role === "assistant"
                           ? "border border-white/10 bg-white/[0.04] text-white/78"
-                          : "ml-auto border border-[#ef4335]/20 bg-[#A50000]/12 text-[#ffe5de]"
+                          : "ml-auto border border-[#2563eb]/20 bg-[#1e3a8a]/30 text-[#eff6ff]"
                       }`}
                     >
                       {message.content}
@@ -225,17 +225,25 @@ export function SyllabusChat({
                   <textarea
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        if (!isSending && question.trim() && hasSourceText) {
+                          void sendQuestion(question);
+                        }
+                      }
+                    }}
                     rows={3}
                     maxLength={400}
                     placeholder="Ask about difficult topics, 2-mark questions, revision strategy, or unit explanations..."
-                    className="min-h-[92px] flex-1 resize-none rounded-[22px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#ef4335]/30"
+                    className="min-h-[92px] flex-1 resize-none rounded-[22px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/28 focus:border-[#2563eb]/50"
                     disabled={isSending || !hasSourceText}
                   />
                   <div className="flex flex-col justify-end gap-2">
                     <Button
                       type="submit"
                       disabled={isSending || !question.trim() || !hasSourceText}
-                      className="min-w-[110px]"
+                      className="min-w-[110px] bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
                     >
                       {isSending ? "Asking..." : "Ask"}
                     </Button>
@@ -251,7 +259,7 @@ export function SyllabusChat({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="pointer-events-auto flex items-center gap-3 rounded-full border border-[#ef4335]/20 bg-[linear-gradient(135deg,rgba(165,0,0,0.92),rgba(239,67,53,0.92))] px-5 py-3 text-sm font-semibold text-white shadow-[0_24px_70px_rgba(165,0,0,0.34)] transition hover:-translate-y-0.5"
+        className="pointer-events-auto flex items-center gap-3 rounded-full border border-[#2563eb]/20 bg-[linear-gradient(135deg,rgba(30,58,138,0.92),rgba(37,99,235,0.92))] px-5 py-3 text-sm font-semibold text-white shadow-[0_24px_70px_rgba(30,58,138,0.34)] transition hover:-translate-y-0.5"
       >
         <span className="inline-flex h-2.5 w-2.5 rounded-full bg-white/90" />
         Ask Your Syllabus
