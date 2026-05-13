@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import { sendPasswordResetEmail, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 
 import { AuthHeroPanel } from "@/components/auth/auth-hero-panel";
-import { ConfettiCanvas } from "@/components/auth/confetti-canvas";
 import { firebaseAuth } from "@/lib/firebase-client";
 
 function getErrorMessage(error: unknown) {
@@ -119,9 +118,6 @@ export function AuthLanding() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f8f9fa]">
 
-      {/* ── Confetti canvas (always active) ── */}
-      <ConfettiCanvas />
-
       {/* ── Very subtle dot grid so background isn't totally flat ── */}
       <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.35]"
         style={{
@@ -137,9 +133,9 @@ export function AuthLanding() {
           transition={{ duration: 0.5 }}
           className="flex items-center gap-3"
         >
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#22000f] text-sm font-black text-white shadow-lg">
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#172233] text-sm font-black text-white shadow-lg">
             L
-            <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#f8f9fa] bg-[#dfff57]" />
+            <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#f8f9fa] bg-[#2563eb]" />
           </div>
           <div>
             <p className="text-sm font-bold text-[#172233]">LPU Exam Cracker</p>
@@ -147,15 +143,6 @@ export function AuthLanding() {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="hidden items-center gap-1.5 rounded-full border border-[#e2e6ec] bg-white px-4 py-2 shadow-sm sm:flex"
-        >
-          <span className="h-2 w-2 rounded-full bg-[#2fd400]" style={{ boxShadow: "0 0 5px #2fd400" }} />
-          <span className="text-xs font-medium text-[#718093]">All systems online</span>
-        </motion.div>
       </nav>
 
       {/* ── Main grid ── */}
@@ -174,13 +161,7 @@ export function AuthLanding() {
 
             {/* Card header */}
             <div className="mb-7">
-              {/* Colourful dot row — inspired by confetti */}
-              <div className="mb-5 flex gap-1.5">
-                {["#ef4335","#dfff57","#3d90ec","#ab95fb","#2fd400","#ff7417"].map((c) => (
-                  <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
-                ))}
-              </div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#718093]">Secure access</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#2563eb]">Secure access</p>
               <h2 className="mt-2 text-3xl font-black text-[#172233]">
                 {mode === "login" ? "Welcome back 👋" : "Join LPU Cracker 🚀"}
               </h2>
@@ -194,7 +175,7 @@ export function AuthLanding() {
                   onClick={() => switchMode("login")}
                   className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
                     mode === "login"
-                      ? "bg-[#22000f] text-white shadow"
+                      ? "bg-[#172233] text-white shadow"
                       : "text-[#718093] hover:text-[#172233]"
                   }`}>
                   Sign In
@@ -203,7 +184,7 @@ export function AuthLanding() {
                   onClick={() => switchMode("signup")}
                   className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
                     mode === "signup"
-                      ? "bg-[#22000f] text-white shadow"
+                      ? "bg-[#172233] text-white shadow"
                       : "text-[#718093] hover:text-[#172233]"
                   }`}>
                   Create Account
@@ -278,11 +259,7 @@ export function AuthLanding() {
                 disabled={isSubmitting}
                 whileHover={{ scale: 1.015, y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                className="group relative w-full overflow-hidden rounded-2xl py-4 text-sm font-black text-[#22000f] transition-all disabled:cursor-wait disabled:opacity-60"
-                style={{
-                  background: "linear-gradient(135deg, #dfff57 0%, #c8e800 100%)",
-                  boxShadow: "0 8px 24px rgba(223,255,87,0.45), 0 2px 8px rgba(0,0,0,0.1)",
-                }}
+                className="group relative w-full overflow-hidden rounded-2xl bg-[#172233] py-4 text-sm font-bold text-white transition-all hover:bg-[#0f172a] hover:shadow-[0_8px_24px_rgba(23,34,51,0.25)] disabled:cursor-wait disabled:opacity-60"
               >
                 {isSubmitting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -296,7 +273,7 @@ export function AuthLanding() {
                   mode === "login" ? "Sign in →" : "Create Account →"
                 )}
                 {/* Shimmer sweep */}
-                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               </motion.button>
             </form>
 

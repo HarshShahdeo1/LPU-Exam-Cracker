@@ -12,13 +12,15 @@ export function AuthHeroPanel() {
     >
       {/* Badge */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4 }}
-        className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#22000f]/10 bg-[#22000f]/5 px-4 py-2"
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#e2e6ec] bg-white px-4 py-2 shadow-sm"
       >
-        <span className="h-2 w-2 rounded-full bg-[#2fd400]" style={{ boxShadow: "0 0 6px #2fd400" }} />
-        <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#22000f]/60">
+        <svg className="h-3.5 w-3.5 text-[#2563eb]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#516071]">
           AI Study Tool for LPU
         </span>
       </motion.div>
@@ -32,10 +34,8 @@ export function AuthHeroPanel() {
       >
         Study smarter.
         <br />
-        <span className="relative">
-          <span className="relative z-10">Score higher.</span>
-          <span className="absolute bottom-1 left-0 -z-0 h-4 w-full rounded-sm opacity-40"
-            style={{ background: "linear-gradient(90deg, #dfff57, #c8e800)" }} />
+        <span className="bg-gradient-to-r from-[#2563eb] to-[#4f46e5] bg-clip-text text-transparent">
+          Score higher.
         </span>
       </motion.h1>
 
