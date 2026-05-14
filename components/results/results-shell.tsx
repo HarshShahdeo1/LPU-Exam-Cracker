@@ -150,7 +150,7 @@ export function ResultsShell({
       <div className="mx-auto flex max-w-[1500px]">
 
         {/* ── Sidebar ──────────────────────────────── */}
-        <aside className="hidden min-h-screen w-[280px] shrink-0 border-r border-[#e8ebf2] bg-white px-5 py-8 xl:flex xl:flex-col">
+        <aside className="hidden sticky top-0 h-screen w-[280px] shrink-0 overflow-y-auto border-r border-[#e8ebf2] bg-white px-5 py-8 xl:flex xl:flex-col">
           <Link href="/upload" className="flex items-center gap-2 text-sm font-semibold text-[#344255] hover:text-[#172233] transition">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
             Dashboard
