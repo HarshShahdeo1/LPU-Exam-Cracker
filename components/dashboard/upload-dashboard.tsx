@@ -156,7 +156,7 @@ export function UploadDashboard({
   return (
     <main className="min-h-screen bg-[#f9fafb]">
       <div className="mx-auto flex max-w-[1500px]">
-        <aside className="hidden min-h-screen w-[300px] shrink-0 border-r border-[#e8ebf2] bg-white px-6 py-8 xl:flex xl:flex-col">
+        <aside className="hidden sticky top-0 h-screen w-[300px] shrink-0 overflow-y-auto scrollbar-thin border-r border-[#e8ebf2] bg-white px-6 py-8 xl:flex xl:flex-col">
           <div className="flex items-center gap-4 rounded-[24px] border border-[#edf0f6] bg-white p-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#eef2ff] text-2xl font-semibold text-[#233142]">
               {userInitial}
