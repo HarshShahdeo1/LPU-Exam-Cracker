@@ -48,7 +48,8 @@ export function UploadDashboard({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
-  const displayName = userName?.trim() || userEmail?.split("@")[0] || "Guest user";
+  const rawName = userName?.trim() || userEmail || "Guest user";
+  const displayName = rawName.split("@")[0];
   const userInitial = displayName.charAt(0).toUpperCase();
 
   useEffect(() => {
@@ -161,9 +162,8 @@ export function UploadDashboard({
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#eef2ff] text-2xl font-semibold text-[#233142]">
               {userInitial}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-col justify-center">
               <p className="truncate text-lg font-semibold text-[#172233]">{displayName}</p>
-              <p className="truncate text-sm text-[#6c7688]">{userEmail ?? "Guest session"}</p>
             </div>
           </div>
 
