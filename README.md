@@ -67,6 +67,15 @@
 ├── types/
 │   ├── report.ts             # Shared TypeScript types
 │   └── system-health.ts      # Telemetry types
+├── docker/
+│   ├── Dockerfile            # Multi-stage production image
+│   ├── docker-compose.yml    # App + Caddy reverse proxy
+│   ├── Caddyfile             # Caddy HTTPS config
+│   └── .dockerignore         # Docker build exclusions
+├── scripts/
+│   └── gen_pdf.py            # Sample syllabus PDF generator
+├── docs/
+│   └── SYNOPSIS.md           # Project synopsis document
 ├── .github/workflows/
 │   ├── ci-cd.yml             # Auto-deploy pipeline
 │   └── setup-ec2.yml         # One-click server initialization
