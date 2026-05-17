@@ -104,9 +104,20 @@ jobs:
 
           # Install dependencies (memory-efficient flags)
           npm install --prefer-offline --no-audit --no-fund
-          
+
+          # Wipe old build to prevent stale/broken .next from persisting
+          rm -rf .next
+
           # Build the Next.js application (limit Node.js heap to 512MB)
           NODE_OPTIONS="--max-old-space-size=512" npm run build
-          
+
+          # Verify build succeeded before restarting (prevents crash-loop on OOM kill)
+          if [ ! -f .next/prerender-manifest.json ]; then
+            echo "❌ Build failed — .next/prerender-manifest.json missing. Aborting deploy."
+            exit 1
+          fi
+          echo "✅ Build verified successfully"
+
           # Restart the application using PM2
           pm2 restart lpu-exam-cracker || pm2 start npm --name "lpu-exam-cracker" -- start
+          pm2 save
