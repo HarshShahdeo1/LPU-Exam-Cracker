@@ -2,7 +2,7 @@
 
 > Upload your LPU syllabus PDF and instantly get AI-generated unit summaries, key terms, exam tips, 5 MCQs per unit, deep study cards, and an interactive chatbot — all powered by Groq + NVIDIA AI.
 
-**Live Demo:** [http://lpu-exam-cracker.duckdns.org](http://lpu-exam-cracker.duckdns.org)
+**Live Demo:** [https://lpu-exam-cracker.duckdns.org](https://lpu-exam-cracker.duckdns.org)
 
 ---
 
@@ -34,7 +34,7 @@
 | **PDF Parsing** | `pdf-parse` (server-side) |
 | **Deployment** | AWS EC2 (`t2.micro`) + PM2 + Nginx |
 | **CI/CD** | GitHub Actions (auto-deploy on push to `main`) |
-| **Domain** | DuckDNS (free dynamic DNS) + AWS Elastic IP |
+| **Domain** | DuckDNS (free dynamic DNS) + AWS Elastic IP + Let's Encrypt SSL |
 
 ---
 
