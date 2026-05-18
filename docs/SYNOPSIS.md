@@ -4,7 +4,7 @@
 **Developer:** Harsh Shahdeo
 **Institution:** Lovely Professional University (LPU)
 **Target Audience:** Students of Lovely Professional University
-**Live Deployment:** [http://lpu-exam-cracker.duckdns.org](http://lpu-exam-cracker.duckdns.org)
+**Live Deployment:** [https://lpu-exam-cracker.duckdns.org](https://lpu-exam-cracker.duckdns.org)
 
 ---
 
@@ -105,6 +105,7 @@ LPU Exam Cracker solves these problems through an end-to-end AI pipeline:
 | **Reverse Proxy** | Nginx | Port 80 → 3000, domain routing |
 | **CI/CD** | GitHub Actions | Auto-deploy on every git push |
 | **Domain** | DuckDNS + AWS Elastic IP | Permanent custom domain |
+| **SSL/TLS** | Let's Encrypt (via Caddy) | Automated HTTPS with auto-renewing certificates |
 
 ---
 
@@ -136,6 +137,8 @@ LPU Exam Cracker solves these problems through an end-to-end AI pipeline:
 | `createdAt` | timestamp | Event timestamp |
 
 ---
+
+## 8. CI/CD Pipeline
 
 ```
 Developer pushes code to GitHub (main branch)
@@ -189,14 +192,14 @@ Developer pushes code to GitHub (main branch)
 - **100% Automated Deployment:** Zero manual steps from code push to production
 - **Sub-5 Second Analysis:** Groq's inference API provides near-instant syllabus processing
 - **Real AI Responses:** Chatbot answers are grounded in the student's actual PDF content
-- **Production-Ready:** Live on the internet at a permanent domain, accessible to all LPU students
+- **Production-Ready:** Live at a permanent HTTPS domain, secured with Let's Encrypt SSL, accessible to all LPU students
 - **Scalable Architecture:** Firebase handles unlimited concurrent users; EC2 can be upgraded as needed
+- **Fully Secured:** End-to-end HTTPS enforced via Caddy reverse proxy with automated certificate renewal
 
 ---
 
 ## 11. Future Enhancements
 
-- HTTPS/SSL via Let's Encrypt for secure connections
 - Multi-language support for regional students
 - Mobile app wrapper using React Native
 - Collaborative study groups with shared reports
